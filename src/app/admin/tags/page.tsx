@@ -14,14 +14,28 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 export default function TagsPage() {
+  const { toast } = useToast()
   const [tags, setTags] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingTag, setEditingTag] = useState<any>(null)
   const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -117,11 +131,8 @@ export default function TagsPage() {
 
   // 删除标签
   const handleDelete = async (tagId: string, name: string) => {
-    if (!confirm(`确定要删除标签"${name}"吗?`)) {
-      return
-    }
-
     try {
+      setDeletingId(tagId)
       const response = await fetch(`/api/tags/${tagId}`, {
         method: 'DELETE',
       })
@@ -133,10 +144,16 @@ export default function TagsPage() {
       }
 
       await loadTags()
-      alert('删除成功!')
+      toast({ title: '成功', description: `标签“${name}”已删除` })
     } catch (error) {
       console.error('删除失败:', error)
-      alert(error instanceof Error ? error.message : '删除失败')
+      toast({
+        title: '错误',
+        description: error instanceof Error ? error.message : '删除失败',
+        variant: 'destructive',
+      })
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -238,14 +255,35 @@ export default function TagsPage() {
                     >
                       <Pencil className="h-3 w-3" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 w-6 p-0"
-                      onClick={() => handleDelete(tag.id, tag.name)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0"
+                          disabled={deletingId === tag.id}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>删除标签</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            确定要删除标签“{tag.name}”吗？此操作不可撤销。
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>取消</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(tag.id, tag.name)}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            确定删除
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               ))}

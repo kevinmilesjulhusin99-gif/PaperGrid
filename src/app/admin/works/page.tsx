@@ -17,6 +17,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 
 type Project = {
   id: string
@@ -50,6 +61,7 @@ export default function AdminWorksPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [formData, setFormData] = useState<ProjectForm>(emptyForm)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const loadProjects = async () => {
     setLoading(true)
@@ -135,10 +147,8 @@ export default function AdminWorksPage() {
   }
 
   const handleDelete = async (project: Project) => {
-    const confirmDelete = window.confirm(`确定要删除作品“${project.name}”吗？`)
-    if (!confirmDelete) return
-
     try {
+      setDeletingId(project.id)
       const res = await fetch(`/api/admin/projects/${project.id}`, { method: 'DELETE' })
       const data = await res.json()
       if (res.ok) {
@@ -150,6 +160,8 @@ export default function AdminWorksPage() {
     } catch (error) {
       console.error('删除作品失败:', error)
       toast({ title: '错误', description: '删除失败', variant: 'destructive' })
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -207,10 +219,31 @@ export default function AdminWorksPage() {
                     <Pencil className="mr-1 h-4 w-4" />
                     编辑
                   </Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(project)}>
-                    <Trash2 className="mr-1 h-4 w-4" />
-                    删除
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" disabled={deletingId === project.id}>
+                        <Trash2 className="mr-1 h-4 w-4" />
+                        删除
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>删除作品</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          确定要删除作品“{project.name}”吗？此操作不可撤销。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDelete(project)}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          确定删除
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </CardContent>
               </Card>
             )

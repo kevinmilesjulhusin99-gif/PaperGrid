@@ -15,15 +15,29 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { useToast } from '@/hooks/use-toast'
 
 export default function CategoriesPage() {
+  const { toast } = useToast()
   const [categories, setCategories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<any>(null)
   const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -123,11 +137,8 @@ export default function CategoriesPage() {
 
   // 删除分类
   const handleDelete = async (categoryId: string, name: string) => {
-    if (!confirm(`确定要删除分类"${name}"吗?`)) {
-      return
-    }
-
     try {
+      setDeletingId(categoryId)
       const response = await fetch(`/api/categories/${categoryId}`, {
         method: 'DELETE',
       })
@@ -139,10 +150,16 @@ export default function CategoriesPage() {
       }
 
       await loadCategories()
-      alert('删除成功!')
+      toast({ title: '成功', description: `分类“${name}”已删除` })
     } catch (error) {
       console.error('删除失败:', error)
-      alert(error instanceof Error ? error.message : '删除失败')
+      toast({
+        title: '错误',
+        description: error instanceof Error ? error.message : '删除失败',
+        variant: 'destructive',
+      })
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -255,15 +272,34 @@ export default function CategoriesPage() {
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() =>
-                        handleDelete(category.id, category.name)
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={deletingId === category.id}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>删除分类</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            确定要删除分类“{category.name}”吗？此操作不可撤销。
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>取消</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(category.id, category.name)}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            确定删除
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               ))}

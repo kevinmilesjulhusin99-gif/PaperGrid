@@ -2,9 +2,20 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { PostsFilters } from '@/components/admin/posts-filters'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
@@ -50,6 +61,7 @@ export function AdminPostsClient({
   })
   const [loading, setLoading] = useState(false)
   const [overlayVisible, setOverlayVisible] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const didMountRef = useRef(false)
   const overlayStartRef = useRef<number | null>(null)
   const overlayTimersRef = useRef<{ show?: ReturnType<typeof setTimeout>; hide?: ReturnType<typeof setTimeout> }>({})
@@ -125,6 +137,25 @@ export function AdminPostsClient({
     const comments = posts.reduce((sum, p) => sum + (p._count?.comments || 0), 0)
     return { total, published, draft, comments }
   }, [posts])
+
+  const deletePost = async (id: string) => {
+    try {
+      setDeletingId(id)
+      const res = await fetch(`/api/posts/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setPosts((prev) => prev.filter((post) => post.id !== id))
+        toast({ title: '成功', description: '文章已删除' })
+      } else {
+        const data = await res.json()
+        toast({ title: '错误', description: data.error || '删除失败', variant: 'destructive' })
+      }
+    } catch (error) {
+      console.error('删除文章失败:', error)
+      toast({ title: '错误', description: '删除失败', variant: 'destructive' })
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -260,9 +291,30 @@ export function AdminPostsClient({
                             编辑
                           </Button>
                         </Link>
-                        <Button size="sm" variant="ghost">
-                          删除
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="ghost" disabled={deletingId === post.id}>
+                              删除
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>删除文章</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                确定要删除这篇文章吗？此操作不可撤销。
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>取消</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deletePost(post.id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                确定删除
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   ))}
@@ -340,9 +392,30 @@ export function AdminPostsClient({
                                   编辑
                                 </Button>
                               </Link>
-                              <Button size="sm" variant="ghost">
-                                删除
-                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="ghost" disabled={deletingId === post.id}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>删除文章</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      确定要删除这篇文章吗？此操作不可撤销。
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deletePost(post.id)}
+                                      className="bg-red-600 hover:bg-red-700"
+                                    >
+                                      确定删除
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
                           </td>
                         </tr>
