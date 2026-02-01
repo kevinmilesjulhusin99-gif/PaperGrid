@@ -19,6 +19,11 @@ services:
       NEXT_CACHE_DIR: "/data/.next-cache"
     volumes:
       - papergrid_data:/data
+    logging:
+      driver: "local"
+      options:
+        max-size: "10m"
+        max-file: "5"
     restart: unless-stopped
 
 volumes:

@@ -25,21 +25,45 @@ export function Navbar({ settings }: { settings?: Record<string, unknown> }) {
   const [postTitle, setPostTitle] = useState('')
   const [showProgressUI, setShowProgressUI] = useState(false)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const titleClearRef = useRef<NodeJS.Timeout | null>(null)
   const s: Record<string, unknown> = settings || {}
   const hideAdminEntry = Boolean(s['ui.hideAdminEntry'])
   const logoUrl = typeof s['site.logoUrl'] === 'string' ? s['site.logoUrl'] : ''
   const siteTitle = typeof s['site.title'] === 'string' ? s['site.title'] : '执笔为剑'
   const defaultAvatarUrl = typeof s['site.defaultAvatarUrl'] === 'string' ? s['site.defaultAvatarUrl'] : ''
+  const isPostDetail = Boolean(pathname?.includes('/posts/') && pathname !== '/posts')
+
+  useEffect(() => {
+    if (!isPostDetail) {
+      setShowProgressUI(false)
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+      if (titleClearRef.current) {
+        clearTimeout(titleClearRef.current)
+      }
+      titleClearRef.current = setTimeout(() => {
+        setPostTitle('')
+        titleClearRef.current = null
+      }, 500)
+    } else if (titleClearRef.current) {
+      clearTimeout(titleClearRef.current)
+      titleClearRef.current = null
+    }
+  }, [isPostDetail])
 
   useEffect(() => {
     const handleTitleChange = (e: any) => {
-      setPostTitle(e.detail)
+      const nextTitle = e?.detail ?? ''
+      if (!nextTitle && !isPostDetail) return
+      setPostTitle(nextTitle)
     }
     window.addEventListener('post-title-changed', handleTitleChange as EventListener)
 
     const handleScroll = () => {
       // Only show title UI on post detail pages and when there is a title
-      if (pathname?.includes('/posts/') && pathname !== '/posts') {
+      if (isPostDetail) {
         setShowProgressUI(true)
         if (timeoutRef.current) clearTimeout(timeoutRef.current)
         timeoutRef.current = setTimeout(() => {
@@ -55,8 +79,9 @@ export function Navbar({ settings }: { settings?: Record<string, unknown> }) {
       window.removeEventListener('post-title-changed', handleTitleChange as EventListener)
       window.removeEventListener('scroll', handleScroll)
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      if (titleClearRef.current) clearTimeout(titleClearRef.current)
     }
-  }, [pathname])
+  }, [isPostDetail])
 
   // 在管理后台下不展示前台导航栏
   if (pathname?.startsWith('/admin')) return null
