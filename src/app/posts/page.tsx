@@ -2,13 +2,12 @@ import { prisma } from '@/lib/prisma'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Calendar, Clock, Eye, Lock } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { zhCN } from 'date-fns/locale'
+import { Eye, Lock } from 'lucide-react'
 import Link from 'next/link'
 import { PostFilters } from '@/components/posts/post-filters'
 import { getSetting } from '@/lib/settings'
 import { Suspense } from 'react'
+import { PostMeta } from '@/components/posts/post-meta'
 
 export const revalidate = 60
 
@@ -224,32 +223,12 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
                           </div>
                         )}
                         <CardHeader className="space-y-2 pb-0">
-                          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                            <Calendar className="h-4 w-4" />
-                            <time>
-                              {post.publishedAt &&
-                                formatDistanceToNow(
-                                  new Date(post.publishedAt),
-                                  { addSuffix: true, locale: zhCN }
-                                )}
-                            </time>
-                            <span>•</span>
-                            <span>{post.author.name}</span>
-                            <span>•</span>
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              <span>{post.readingTime || 1} 分钟阅读</span>
-                            </div>
-                            {post.isProtected && (
-                              <>
-                                <span>•</span>
-                                <div className="flex items-center gap-1">
-                                  <Lock className="h-3 w-3" />
-                                  <span>加密</span>
-                                </div>
-                              </>
-                            )}
-                          </div>
+                          <PostMeta
+                            publishedAt={post.publishedAt}
+                            authorName={post.author.name}
+                            readingTime={post.readingTime}
+                            isProtected={post.isProtected}
+                          />
                           <CardTitle className="line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400">
                             {post.title}
                           </CardTitle>

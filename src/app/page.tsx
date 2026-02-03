@@ -3,13 +3,12 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
-import { Calendar, Clock, Eye, Lock } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { zhCN } from 'date-fns/locale'
+import { Eye } from 'lucide-react'
 import { HeroSection } from '@/components/home/hero-section'
 import { getPublicSettings } from '@/lib/settings'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { RecentCommentsTimeline } from '@/components/comments/recent-comments-timeline'
+import { PostMeta } from '@/components/posts/post-meta'
 
 export const revalidate = 60
 
@@ -141,32 +140,12 @@ export default async function HomePage() {
                     >
                       <Link href={`/posts/${post.slug}`}>
                         <CardHeader className="space-y-2 pb-0">
-                          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                            <Calendar className="h-4 w-4" />
-                            <time>
-                              {post.publishedAt &&
-                                formatDistanceToNow(
-                                  new Date(post.publishedAt),
-                                  { addSuffix: true, locale: zhCN }
-                                )}
-                            </time>
-                            <span>•</span>
-                            <span>{post.author.name}</span>
-                            <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            <span>{post.readingTime || 1} 分钟阅读</span>
-                          </span>
-                          {post.isProtected && (
-                            <>
-                              <span>•</span>
-                              <span className="flex items-center gap-1">
-                                <Lock className="h-4 w-4" />
-                                <span>加密</span>
-                              </span>
-                            </>
-                          )}
-                        </div>
+                          <PostMeta
+                            publishedAt={post.publishedAt}
+                            authorName={post.author.name}
+                            readingTime={post.readingTime}
+                            isProtected={post.isProtected}
+                          />
                           <CardTitle className="line-clamp-2 text-xl hover:text-blue-600 dark:hover:text-blue-400">
                             {post.title}
                           </CardTitle>

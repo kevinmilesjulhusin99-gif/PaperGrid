@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,9 @@ export function MobileNav({ isOpen, onOpenChange, side = 'left', showTrigger = t
   const [internalOpen, setInternalOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [settings, setSettings] = useState<any>(null)
+  const [isFocusInside, setIsFocusInside] = useState(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
   
   const open = typeof isOpen === 'boolean' ? isOpen : internalOpen
   const setOpen = (v: boolean) => {
@@ -53,6 +56,35 @@ export function MobileNav({ isOpen, onOpenChange, side = 'left', showTrigger = t
     }
   }, [open])
 
+  useEffect(() => {
+    if (open) return
+    const active = document.activeElement
+    if (active && containerRef.current?.contains(active)) {
+      triggerRef.current?.focus()
+    }
+  }, [open])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleFocusIn = () => setIsFocusInside(true)
+    const handleFocusOut = (event: FocusEvent) => {
+      const next = event.relatedTarget as Node | null
+      if (!next || !container.contains(next)) {
+        setIsFocusInside(false)
+      }
+    }
+
+    container.addEventListener('focusin', handleFocusIn)
+    container.addEventListener('focusout', handleFocusOut)
+
+    return () => {
+      container.removeEventListener('focusin', handleFocusIn)
+      container.removeEventListener('focusout', handleFocusOut)
+    }
+  }, [])
+
   const blogLinks = [
     { href: '/', label: '首页' },
     { href: '/posts', label: '文章' },
@@ -76,10 +108,11 @@ export function MobileNav({ isOpen, onOpenChange, side = 'left', showTrigger = t
   const links = isAdmin ? adminLinks : blogLinks
 
   const SidebarContent = (
-    <div 
+    <div
+      ref={containerRef}
       className={`fixed inset-0 z-[100] flex ${open ? 'pointer-events-auto' : 'pointer-events-none'}`} 
-      aria-hidden={!open}
-      inert={!open ? true : undefined}
+      aria-hidden={!open && !isFocusInside}
+      inert={!open && !isFocusInside ? true : undefined}
     >
       {/* backdrop */}
       <div
@@ -161,7 +194,7 @@ export function MobileNav({ isOpen, onOpenChange, side = 'left', showTrigger = t
     <>
       <div className="md:hidden">
         {showTrigger && (
-          <Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="打开菜单">
+          <Button ref={triggerRef} variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="打开菜单">
             <Menu className="h-5 w-5" />
           </Button>
         )}

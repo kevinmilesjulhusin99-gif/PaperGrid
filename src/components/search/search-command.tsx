@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, File, Folder, Tag as TagIcon, X, Lock } from 'lucide-react'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
@@ -156,8 +156,9 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden p-0 shadow-lg max-w-2xl">
+      <DialogContent className="overflow-hidden p-0 shadow-lg max-w-2xl" showCloseButton={false}>
         <DialogTitle className="sr-only">搜索</DialogTitle>
+        <DialogDescription className="sr-only">搜索文章、分类与标签</DialogDescription>
         <div className="flex flex-col">
           {/* 搜索输入框 */}
           <div className="flex items-center border-b px-4 py-3">
@@ -169,18 +170,30 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
               className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
               autoFocus
             />
-            <button
-              onClick={() => {
-                setQuery('')
-                setResults(null)
-              }}
-              className="ml-2 shrink-0 rounded-sm opacity-50 hover:opacity-100 transition-opacity"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            {query && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery('')
+                  setResults(null)
+                }}
+                className="ml-2 shrink-0 rounded-sm opacity-50 hover:opacity-100 transition-opacity"
+                aria-label="清空搜索"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
             <kbd className="ml-2 hidden h-5 shrink-0 select-none items-center gap-1 rounded border bg-muted px-2 text-[10px] font-medium opacity-50 sm:flex sm:text-xs">
               <span className="text-xs">ESC</span>
             </kbd>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground sm:hidden"
+              aria-label="关闭搜索"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
           {/* 标签切换 */}
