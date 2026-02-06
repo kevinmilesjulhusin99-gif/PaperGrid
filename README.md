@@ -91,6 +91,7 @@ NEXTAUTH_SECRET="your-secret-key-change-this-in-production"
 MEDIA_ROOT="/data/uploads"
 MEDIA_MAX_UPLOAD_MB="10"
 MEDIA_MAX_INPUT_PIXELS="40000000"
+MEDIA_RESOLVE_CACHE_TTL_MS="30000" # 媒体元数据缓存(ms)
 INIT_ADMIN_TOKEN=""
 ADMIN_INIT_PASSWORD=""
 

@@ -15,7 +15,7 @@ import {
 import { fileTypeFromBuffer } from 'file-type'
 import sharp from 'sharp'
 import type { MediaCompressionMode } from '@prisma/client'
-import { writeFile } from 'node:fs/promises'
+import { unlink, writeFile } from 'node:fs/promises'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -242,38 +242,52 @@ export async function POST(request: Request) {
 
     await writeFile(absolutePath, processed.content, { flag: 'wx' })
 
-    const record = await prisma.mediaFile.create({
-      data: {
-        originalName: file.name || 'image',
-        storagePath,
-        mimeType: processed.mimeType,
-        ext: processed.ext,
-        size: processed.content.length,
-        width: processed.width,
-        height: processed.height,
-        sha256: sha256Hex(processed.content),
-        compressionMode: mode,
-        uploadedById: session.user.id,
-      },
-      select: {
-        id: true,
-        originalName: true,
-        mimeType: true,
-        ext: true,
-        size: true,
-        width: true,
-        height: true,
-        compressionMode: true,
-        createdAt: true,
-        uploadedBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+    let record
+    try {
+      record = await prisma.mediaFile.create({
+        data: {
+          originalName: file.name || 'image',
+          storagePath,
+          mimeType: processed.mimeType,
+          ext: processed.ext,
+          size: processed.content.length,
+          width: processed.width,
+          height: processed.height,
+          sha256: sha256Hex(processed.content),
+          compressionMode: mode,
+          uploadedById: session.user.id,
+        },
+        select: {
+          id: true,
+          originalName: true,
+          mimeType: true,
+          ext: true,
+          size: true,
+          width: true,
+          height: true,
+          compressionMode: true,
+          createdAt: true,
+          uploadedBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
           },
         },
-      },
-    })
+      })
+    } catch (dbError) {
+      try {
+        await unlink(absolutePath)
+      } catch (cleanupError) {
+        const nodeError = cleanupError as NodeJS.ErrnoException
+        if (nodeError.code !== 'ENOENT') {
+          console.error('回滚上传文件失败:', cleanupError)
+        }
+      }
+
+      throw dbError
+    }
 
     return NextResponse.json({ file: toFilePayload(record) }, { status: 201 })
   } catch (error) {
@@ -288,7 +302,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '文件名冲突，请重试上传' }, { status: 409 })
     }
 
-    const message = error instanceof Error ? error.message : '上传文件失败'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: '上传文件失败' }, { status: 500 })
   }
 }

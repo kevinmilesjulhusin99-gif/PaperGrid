@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Copy, Eye, Loader2, RefreshCw, Trash2, Upload } from 'lucide-react'
+import Image from 'next/image'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -261,8 +262,14 @@ export default function AdminFilesPage() {
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {files.map((file) => (
                 <div key={file.id} className="overflow-hidden rounded-lg border bg-card">
-                  <div className="aspect-video bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden">
-                    <img src={file.url} alt={file.originalName} className="h-full w-full object-cover" loading="lazy" />
+                  <div className="relative aspect-video overflow-hidden bg-gray-100 dark:bg-gray-900">
+                    <Image
+                      src={file.url}
+                      alt={file.originalName}
+                      fill
+                      sizes="(min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw"
+                      className="object-cover"
+                    />
                   </div>
                   <div className="space-y-2 p-3">
                     <p className="line-clamp-1 text-sm font-medium" title={file.originalName}>

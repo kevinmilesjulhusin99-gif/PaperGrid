@@ -2,16 +2,82 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { mediaUrlById, resolveMediaPath } from '@/lib/media'
+import { removeCachedMediaResolvedFile } from '@/lib/media-file-cache'
 import { unlink } from 'node:fs/promises'
 
 export const runtime = 'nodejs'
 
 const SETTING_KEYS = ['site.logoUrl', 'site.faviconUrl', 'site.defaultAvatarUrl']
+const MEDIA_URL_PREFIX = '/api/files/'
 
 function unwrapSettingValue(value: unknown): unknown {
   if (!value || typeof value !== 'object') return undefined
   const values = Object.values(value as Record<string, unknown>)
   return values.length > 0 ? values[0] : undefined
+}
+
+function normalizeMediaUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+
+  const raw = value.trim()
+  if (!raw) return null
+
+  try {
+    const parsed = raw.startsWith('/') ? new URL(raw, 'http://papergrid.local') : new URL(raw)
+    const pathname = parsed.pathname.replace(/\/+$/, '')
+    return pathname || '/'
+  } catch {
+    return null
+  }
+}
+
+function isMediaUrlReference(value: unknown, mediaId: string): boolean {
+  return normalizeMediaUrl(value) === mediaUrlById(mediaId)
+}
+
+async function getReferenceSummary(mediaId: string) {
+  const targetUrl = mediaUrlById(mediaId)
+  const fuzzyHint = `${MEDIA_URL_PREFIX}${mediaId}`
+
+  const [postRows, projectRows, userRows, settingRows] = await Promise.all([
+    prisma.post.findMany({
+      where: {
+        OR: [{ coverImage: targetUrl }, { coverImage: { contains: fuzzyHint } }],
+      },
+      select: { coverImage: true },
+    }),
+    prisma.project.findMany({
+      where: {
+        OR: [{ image: targetUrl }, { image: { contains: fuzzyHint } }],
+      },
+      select: { image: true },
+    }),
+    prisma.user.findMany({
+      where: {
+        OR: [{ image: targetUrl }, { image: { contains: fuzzyHint } }],
+      },
+      select: { image: true },
+    }),
+    prisma.setting.findMany({
+      where: { key: { in: SETTING_KEYS } },
+      select: { key: true, value: true },
+    }),
+  ])
+
+  const posts = postRows.filter((row) => isMediaUrlReference(row.coverImage, mediaId)).length
+  const projects = projectRows.filter((row) => isMediaUrlReference(row.image, mediaId)).length
+  const users = userRows.filter((row) => isMediaUrlReference(row.image, mediaId)).length
+  const settings = settingRows
+    .filter((row) => isMediaUrlReference(unwrapSettingValue(row.value), mediaId))
+    .map((row) => row.key)
+
+  return {
+    posts,
+    projects,
+    users,
+    settings,
+    total: posts + projects + users + settings.length,
+  }
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -24,58 +90,62 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const { id } = await params
     const media = await prisma.mediaFile.findUnique({
       where: { id },
-      select: {
-        id: true,
-        storagePath: true,
-      },
     })
 
     if (!media) {
       return NextResponse.json({ error: '文件不存在' }, { status: 404 })
     }
 
-    const url = mediaUrlById(media.id)
     const { searchParams } = new URL(request.url)
     const force = searchParams.get('force') === '1'
 
-    const [postCount, projectCount, userCount, settingRows] = await Promise.all([
-      prisma.post.count({ where: { coverImage: url } }),
-      prisma.project.count({ where: { image: url } }),
-      prisma.user.count({ where: { image: url } }),
-      prisma.setting.findMany({
-        where: { key: { in: SETTING_KEYS } },
-        select: { key: true, value: true },
-      }),
-    ])
+    const references = await getReferenceSummary(media.id)
 
-    const settingUsage = settingRows.filter((row) => unwrapSettingValue(row.value) === url)
-    const totalRefs = postCount + projectCount + userCount + settingUsage.length
-
-    if (!force && totalRefs > 0) {
+    if (!force && references.total > 0) {
       return NextResponse.json(
         {
           error: '该图片仍在服务站点内容，建议先替换引用后再删除',
-          references: {
-            posts: postCount,
-            projects: projectCount,
-            users: userCount,
-            settings: settingUsage.map((item) => item.key),
-            total: totalRefs,
-          },
+          references,
         },
         { status: 409 }
       )
     }
 
-    await prisma.mediaFile.delete({ where: { id } })
+    const deleted = await prisma.mediaFile.delete({ where: { id } })
+    removeCachedMediaResolvedFile(id)
 
-    const absolutePath = resolveMediaPath(media.storagePath)
+    const absolutePath = resolveMediaPath(deleted.storagePath)
+
     try {
       await unlink(absolutePath)
     } catch (error) {
-      const err = error as NodeJS.ErrnoException
-      if (err.code !== 'ENOENT') {
-        console.error('删除本地文件失败:', err)
+      const nodeError = error as NodeJS.ErrnoException
+
+      if (nodeError.code !== 'ENOENT') {
+        console.error('删除本地文件失败，准备回滚数据库记录:', nodeError)
+
+        try {
+          await prisma.mediaFile.create({
+            data: {
+              id: deleted.id,
+              originalName: deleted.originalName,
+              storagePath: deleted.storagePath,
+              mimeType: deleted.mimeType,
+              ext: deleted.ext,
+              size: deleted.size,
+              width: deleted.width,
+              height: deleted.height,
+              sha256: deleted.sha256,
+              compressionMode: deleted.compressionMode,
+              uploadedById: deleted.uploadedById,
+              createdAt: deleted.createdAt,
+            },
+          })
+        } catch (rollbackError) {
+          console.error('回滚媒体记录失败:', rollbackError)
+        }
+
+        return NextResponse.json({ error: '删除文件失败，请重试' }, { status: 500 })
       }
     }
 
