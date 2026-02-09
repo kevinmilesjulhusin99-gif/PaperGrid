@@ -247,14 +247,19 @@ model ApiKey {
   name        String
   keyHash     String            @unique
   keyPrefix   String
+  createdById String?
   permissions Json
   enabled     Boolean           @default(true)
   lastUsedAt  DateTime?
+  lastUsedIp  String?
+  expiresAt   DateTime?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
   @@index([keyPrefix])
   @@index([enabled])
+  @@index([createdById])
+  @@index([expiresAt])
 }
 
 // 系统设置

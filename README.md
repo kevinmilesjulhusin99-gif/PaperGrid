@@ -155,6 +155,80 @@ location ^~ /api/files/ {
 client_max_body_size 10m;
 ```
 
+## 插件文章 API 与接口密钥
+
+适用于外部插件/自动化脚本管理文章，入口为：
+
+- `GET /api/plugin/posts`
+- `POST /api/plugin/posts`
+- `GET /api/plugin/posts/:id`
+- `PATCH /api/plugin/posts/:id`
+- `DELETE /api/plugin/posts/:id`
+
+### 1) 创建接口密钥
+
+登录管理员后台后，进入 `管理后台 -> 接口密钥`：
+
+- 勾选所需权限：`POST_READ` / `POST_CREATE` / `POST_UPDATE` / `POST_DELETE`
+- 可选设置过期时间
+- 生成后会返回明文密钥（只显示一次）
+
+### 2) 传递方式
+
+支持二选一：
+
+```bash
+# 方式一：x-api-key
+-H "x-api-key: eak_xxxxx"
+
+# 方式二：Authorization Bearer
+-H "Authorization: Bearer eak_xxxxx"
+```
+
+### 3) 调用示例
+
+```bash
+# 列表
+curl -X GET "http://localhost:6066/api/plugin/posts?page=1&limit=10" \
+  -H "x-api-key: eak_your_key"
+
+# 创建
+curl -X POST "http://localhost:6066/api/plugin/posts" \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: eak_your_key" \
+  -d '{
+    "title": "来自插件的文章",
+    "content": "# Hello\\n插件发布成功",
+    "status": "PUBLISHED",
+    "locale": "zh",
+    "isProtected": true,
+    "password": "123456",
+    "createdAt": "2026-02-09T12:00:00.000Z"
+  }'
+
+# 更新（替换 :id）
+curl -X PATCH "http://localhost:6066/api/plugin/posts/:id" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eak_your_key" \
+  -d '{
+    "title": "插件更新后的标题",
+    "status": "DRAFT",
+    "isProtected": false
+  }'
+
+# 删除（替换 :id）
+curl -X DELETE "http://localhost:6066/api/plugin/posts/:id" \
+  -H "x-api-key: eak_your_key"
+```
+
+### 4) 返回与限制
+
+- 未提供密钥：`401`
+- 密钥无效/禁用/过期：`401`
+- 权限不足：`403`
+- 请求过快：`429`
+- 响应头包含限流信息：`X-RateLimit-*`、`Retry-After`
+
 ## 数据库自动初始化
 
 为了让克隆后开箱即用，本项目在以下时机会自动执行数据库准备：

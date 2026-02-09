@@ -1,9 +1,140 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { PostStatus } from '@prisma/client'
+import { PostStatus, type Prisma } from '@prisma/client'
 import slugify from 'slugify'
 import { requireApiKey } from '@/lib/api-keys'
 import readingTime from 'reading-time'
+import bcrypt from 'bcryptjs'
+
+const ALLOWED_POST_STATUS = new Set<PostStatus>([
+  PostStatus.DRAFT,
+  PostStatus.PUBLISHED,
+  PostStatus.ARCHIVED,
+])
+
+function normalizeTags(input: unknown): string[] {
+  if (!Array.isArray(input)) return []
+  const dedup = new Set<string>()
+  for (const item of input) {
+    if (typeof item === 'string' && item.trim().length > 0) {
+      dedup.add(item.trim())
+    }
+  }
+  return [...dedup]
+}
+
+function parseTags(input: unknown) {
+  if (input === undefined) {
+    return { ok: true as const, tags: [] as string[], shouldUpdate: false }
+  }
+  if (!Array.isArray(input)) {
+    return { ok: false as const, error: 'tags 必须是字符串数组' }
+  }
+
+  const normalized = normalizeTags(input)
+  if (normalized.length !== input.length) {
+    return { ok: false as const, error: 'tags 中存在非法值' }
+  }
+
+  return { ok: true as const, tags: normalized, shouldUpdate: true }
+}
+
+function parseStatus(input: unknown): PostStatus | null {
+  if (typeof input !== 'string') return null
+  if (!ALLOWED_POST_STATUS.has(input as PostStatus)) return null
+  return input as PostStatus
+}
+
+function parseBoolean(input: unknown): boolean | undefined {
+  if (typeof input === 'boolean') return input
+  return undefined
+}
+
+function parseOptionalString(input: unknown): string | undefined {
+  if (typeof input !== 'string') return undefined
+  return input
+}
+
+function parseNullableString(input: unknown): string | null | undefined {
+  if (input === undefined) return undefined
+  if (input === null) return null
+  if (typeof input !== 'string') return undefined
+  return input
+}
+
+function parseCategoryId(input: unknown): string | null | undefined {
+  if (input === '') return null
+  if (typeof input !== 'string') return undefined
+  const normalized = input.trim()
+  return normalized.length > 0 ? normalized : null
+}
+
+function parseCreatedAt(input: unknown): Date | null | undefined {
+  if (input === undefined) return undefined
+  if (input === null || input === '') return null
+  if (typeof input !== 'string') return undefined
+  const normalized = input.trim()
+  if (!normalized) return null
+  const parsed = new Date(normalized)
+  if (Number.isNaN(parsed.getTime())) return undefined
+  return parsed
+}
+
+async function hashPostPasswordIfNeeded(isProtected: boolean, password: unknown) {
+  if (!isProtected) {
+    return { ok: true as const, passwordHash: null as string | null }
+  }
+
+  const raw = typeof password === 'string' ? password.trim() : ''
+  if (raw.length < 4) {
+    return { ok: false as const, error: '文章密码至少 4 位' }
+  }
+  if (raw.length > 64) {
+    return { ok: false as const, error: '文章密码过长' }
+  }
+
+  const passwordHash = await bcrypt.hash(raw, 10)
+  return { ok: true as const, passwordHash }
+}
+
+async function assertCategoryExists(categoryId: string | null | undefined) {
+  if (categoryId === undefined) {
+    return { ok: true as const, resolvedCategoryId: undefined as string | undefined }
+  }
+
+  if (categoryId === null) {
+    const defaultCategory = await prisma.category.upsert({
+      where: { slug: 'uncategorized' },
+      update: { name: '未分类' },
+      create: { name: '未分类', slug: 'uncategorized' },
+    })
+    return { ok: true as const, resolvedCategoryId: defaultCategory.id }
+  }
+
+  const category = await prisma.category.findUnique({ where: { id: categoryId }, select: { id: true } })
+  if (!category) {
+    return { ok: false as const, error: '分类不存在' }
+  }
+
+  return { ok: true as const, resolvedCategoryId: category.id }
+}
+
+async function assertTagsExist(tagIds: string[]) {
+  if (tagIds.length === 0) {
+    return { ok: true as const }
+  }
+
+  const found = await prisma.tag.findMany({
+    where: { id: { in: tagIds } },
+    select: { id: true },
+  })
+
+  if (found.length !== tagIds.length) {
+    return { ok: false as const, error: '存在无效标签 ID' }
+  }
+
+  return { ok: true as const }
+}
 
 async function resolveAuthorId() {
   const admin = await prisma.user.findFirst({
@@ -23,7 +154,10 @@ export async function GET(req: Request) {
   try {
     const authResult = await requireApiKey(req, 'POST_READ')
     if (!authResult.ok) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status })
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status, headers: authResult.headers }
+      )
     }
 
     const { searchParams } = new URL(req.url)
@@ -36,10 +170,17 @@ export async function GET(req: Request) {
 
     const safePage = Number.isFinite(page) && page > 0 ? page : 1
     const skip = (safePage - 1) * limit
-    const where: any = {}
+    const where: Prisma.PostWhereInput = {}
 
     if (status && status !== 'all') {
-      where.status = status as PostStatus
+      const parsedStatus = parseStatus(status)
+      if (!parsedStatus) {
+        return NextResponse.json(
+          { error: '无效的文章状态' },
+          { status: 400, headers: authResult.headers }
+        )
+      }
+      where.status = parsedStatus
     }
 
     if (search) {
@@ -94,15 +235,18 @@ export async function GET(req: Request) {
       take: limit,
     })
 
-    return NextResponse.json({
-      posts,
-      pagination: {
-        total,
-        page: safePage,
-        limit,
-        totalPages: Math.ceil(total / limit),
+    return NextResponse.json(
+      {
+        posts,
+        pagination: {
+          total,
+          page: safePage,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
       },
-    })
+      { headers: authResult.headers }
+    )
   } catch (error) {
     console.error('插件获取文章列表失败:', error)
     return NextResponse.json({ error: '获取文章列表失败' }, { status: 500 })
@@ -114,7 +258,10 @@ export async function POST(req: Request) {
   try {
     const authResult = await requireApiKey(req, 'POST_CREATE')
     if (!authResult.ok) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status })
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status, headers: authResult.headers }
+      )
     }
 
     const body = await req.json()
@@ -127,14 +274,109 @@ export async function POST(req: Request) {
       locale,
       categoryId,
       tags,
+      createdAt,
+      isProtected,
+      password,
     } = body
 
-    if (!title || !content) {
-      return NextResponse.json({ error: '标题和内容不能为空' }, { status: 400 })
+    const normalizedTitle = typeof title === 'string' ? title.trim() : ''
+    if (!normalizedTitle) {
+      return NextResponse.json(
+        { error: '标题不能为空' },
+        { status: 400, headers: authResult.headers }
+      )
+    }
+
+    if (typeof content !== 'string' || content.trim().length === 0) {
+      return NextResponse.json(
+        { error: '内容不能为空' },
+        { status: 400, headers: authResult.headers }
+      )
+    }
+
+    const parsedExcerpt = parseNullableString(excerpt)
+    if (excerpt !== undefined && parsedExcerpt === undefined) {
+      return NextResponse.json(
+        { error: 'excerpt 类型错误' },
+        { status: 400, headers: authResult.headers }
+      )
+    }
+
+    const parsedCoverImage = parseNullableString(coverImage)
+    if (coverImage !== undefined && parsedCoverImage === undefined) {
+      return NextResponse.json(
+        { error: 'coverImage 类型错误' },
+        { status: 400, headers: authResult.headers }
+      )
+    }
+
+    const parsedStatus = status === undefined ? PostStatus.DRAFT : parseStatus(status)
+    if (!parsedStatus) {
+      return NextResponse.json(
+        { error: '无效的文章状态' },
+        { status: 400, headers: authResult.headers }
+      )
+    }
+
+    const parsedLocale = parseOptionalString(locale)
+    if (locale !== undefined && parsedLocale === undefined) {
+      return NextResponse.json(
+        { error: 'locale 类型错误' },
+        { status: 400, headers: authResult.headers }
+      )
+    }
+
+    const parsedCreatedAt = parseCreatedAt(createdAt)
+    if (createdAt !== undefined && parsedCreatedAt === undefined) {
+      return NextResponse.json(
+        { error: '创建时间格式错误' },
+        { status: 400, headers: authResult.headers }
+      )
+    }
+
+    const parsedIsProtected = parseBoolean(isProtected)
+    if (isProtected !== undefined && parsedIsProtected === undefined) {
+      return NextResponse.json(
+        { error: 'isProtected 类型错误' },
+        { status: 400, headers: authResult.headers }
+      )
+    }
+    const protectPost = parsedIsProtected === true
+
+    const passwordResult = await hashPostPasswordIfNeeded(protectPost, password)
+    if (!passwordResult.ok) {
+      return NextResponse.json(
+        { error: passwordResult.error },
+        { status: 400, headers: authResult.headers }
+      )
+    }
+
+    const normalizedCategoryId = parseCategoryId(categoryId)
+    if (categoryId !== undefined && normalizedCategoryId === undefined) {
+      return NextResponse.json(
+        { error: 'categoryId 类型错误' },
+        { status: 400, headers: authResult.headers }
+      )
+    }
+
+    const parsedTags = parseTags(tags)
+    if (!parsedTags.ok) {
+      return NextResponse.json(
+        { error: parsedTags.error },
+        { status: 400, headers: authResult.headers }
+      )
+    }
+
+    const tagsValidation = await assertTagsExist(parsedTags.tags)
+    if (!tagsValidation.ok) {
+      return NextResponse.json(
+        { error: tagsValidation.error },
+        { status: 400, headers: authResult.headers }
+      )
     }
 
     const baseSlug =
-      slugify(String(title), { lower: true, strict: true, trim: true }) ||
+      slugify(normalizedTitle, { lower: true, strict: true, trim: true }) ||
       `post-${Date.now()}`
     let slug = baseSlug
     let suffix = 1
@@ -143,39 +385,36 @@ export async function POST(req: Request) {
       suffix += 1
     }
 
-    const normalizedCategoryId =
-      typeof categoryId === 'string' && categoryId.trim().length > 0
-        ? categoryId
-        : null
-
-    let resolvedCategoryId = normalizedCategoryId
-    if (!resolvedCategoryId) {
-      const defaultCategory = await prisma.category.upsert({
-        where: { slug: 'uncategorized' },
-        update: { name: '未分类' },
-        create: { name: '未分类', slug: 'uncategorized' },
-      })
-      resolvedCategoryId = defaultCategory.id
+    const categoryValidation = await assertCategoryExists(normalizedCategoryId ?? null)
+    if (!categoryValidation.ok) {
+      return NextResponse.json(
+        { error: categoryValidation.error },
+        { status: 400, headers: authResult.headers }
+      )
     }
+    const resolvedCategoryId = categoryValidation.resolvedCategoryId!
 
     const authorId = await resolveAuthorId()
 
     const post = await prisma.post.create({
       data: {
-        title,
+        title: normalizedTitle,
         slug,
         content,
-        readingTime: Math.max(1, Math.round(readingTime(String(content)).minutes)),
-        excerpt,
-        coverImage,
-        status: status || PostStatus.DRAFT,
-        locale: locale || 'zh',
+        readingTime: Math.max(1, Math.round(readingTime(content).minutes)),
+        ...(parsedExcerpt !== undefined && { excerpt: parsedExcerpt }),
+        ...(parsedCoverImage !== undefined && { coverImage: parsedCoverImage }),
+        status: parsedStatus,
+        locale: parsedLocale || 'zh',
         authorId,
         categoryId: resolvedCategoryId,
-        publishedAt: status === PostStatus.PUBLISHED ? new Date() : null,
-        postTags: tags
+        isProtected: protectPost,
+        passwordHash: passwordResult.passwordHash,
+        ...(parsedCreatedAt ? { createdAt: parsedCreatedAt } : {}),
+        publishedAt: parsedStatus === PostStatus.PUBLISHED ? new Date() : null,
+        postTags: parsedTags.tags.length > 0
           ? {
-              create: tags.map((tagId: string) => ({
+              create: parsedTags.tags.map((tagId) => ({
                 tagId,
               })),
             }
@@ -211,7 +450,7 @@ export async function POST(req: Request) {
       },
     })
 
-    return NextResponse.json({ post }, { status: 201 })
+    return NextResponse.json({ post }, { status: 201, headers: authResult.headers })
   } catch (error) {
     console.error('插件创建文章失败:', error)
     return NextResponse.json({ error: '创建文章失败' }, { status: 500 })

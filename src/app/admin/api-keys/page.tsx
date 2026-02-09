@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,9 +28,12 @@ type ApiKeyRecord = {
   id: string
   name: string
   keyPrefix: string
+  createdById: string | null
   permissions: string[]
   enabled: boolean
   lastUsedAt: string | null
+  lastUsedIp: string | null
+  expiresAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -42,6 +45,7 @@ export default function AdminApiKeysPage() {
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [newPermissions, setNewPermissions] = useState<string[]>(['POST_READ'])
+  const [newExpiresAt, setNewExpiresAt] = useState('')
   const [plainKey, setPlainKey] = useState<string | null>(null)
 
   const permissionsLabelMap = useMemo(() => {
@@ -51,11 +55,7 @@ export default function AdminApiKeysPage() {
     }, {} as Record<string, string>)
   }, [])
 
-  useEffect(() => {
-    fetchApiKeys()
-  }, [])
-
-  const fetchApiKeys = async () => {
+  const fetchApiKeys = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/admin/api-keys')
@@ -71,7 +71,11 @@ export default function AdminApiKeysPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    fetchApiKeys()
+  }, [fetchApiKeys])
 
   const togglePermission = (current: string[], permission: string) => {
     if (current.includes(permission)) {
@@ -90,6 +94,7 @@ export default function AdminApiKeysPage() {
           name: newName,
           permissions: newPermissions,
           enabled: true,
+          expiresAt: newExpiresAt ? new Date(newExpiresAt).toISOString() : null,
         }),
       })
       const data = await res.json()
@@ -97,6 +102,7 @@ export default function AdminApiKeysPage() {
         setPlainKey(data.plainKey)
         setNewName('')
         setNewPermissions(['POST_READ'])
+        setNewExpiresAt('')
         await fetchApiKeys()
         toast({ title: '成功', description: 'API Key 已创建' })
       } else {
@@ -119,6 +125,7 @@ export default function AdminApiKeysPage() {
           name: key.name,
           permissions: key.permissions,
           enabled: key.enabled,
+          expiresAt: key.expiresAt,
         }),
       })
       const data = await res.json()
@@ -186,6 +193,15 @@ export default function AdminApiKeysPage() {
                   </label>
                 ))}
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">过期时间（可选）</label>
+              <Input
+                className="mt-2"
+                type="datetime-local"
+                value={newExpiresAt}
+                onChange={(e) => setNewExpiresAt(e.target.value)}
+              />
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -267,6 +283,22 @@ export default function AdminApiKeysPage() {
                       <div className="grid gap-4 text-xs text-muted-foreground md:grid-cols-2">
                         <div>创建时间：{new Date(key.createdAt).toLocaleString()}</div>
                         <div>最近使用：{key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString() : '未使用'}</div>
+                        <div>最近来源 IP：{key.lastUsedIp || '未知'}</div>
+                        <div>过期时间：{key.expiresAt ? new Date(key.expiresAt).toLocaleString() : '不过期'}</div>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-muted-foreground">过期时间（可选）</label>
+                        <Input
+                          className="mt-1"
+                          type="datetime-local"
+                          value={key.expiresAt ? new Date(key.expiresAt).toISOString().slice(0, 16) : ''}
+                          onChange={(e) => {
+                            const next = e.target.value
+                            updateKeyState(key.id, {
+                              expiresAt: next ? new Date(next).toISOString() : null,
+                            })
+                          }}
+                        />
                       </div>
                     </div>
 

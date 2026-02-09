@@ -10,6 +10,15 @@ function normalizePermissions(input: unknown) {
   return input.filter((p) => typeof p === 'string' && allowed.has(p as ApiKeyPermission)) as ApiKeyPermission[]
 }
 
+function normalizeExpiresAt(input: unknown): Date | null | undefined {
+  if (input === undefined) return undefined
+  if (input === null || input === '') return null
+  if (typeof input !== 'string') return undefined
+  const parsed = new Date(input)
+  if (Number.isNaN(parsed.getTime())) return undefined
+  return parsed
+}
+
 // GET /api/admin/api-keys - 获取 API Key 列表
 export async function GET() {
   try {
@@ -24,9 +33,12 @@ export async function GET() {
         id: true,
         name: true,
         keyPrefix: true,
+        createdById: true,
         permissions: true,
         enabled: true,
         lastUsedAt: true,
+        lastUsedIp: true,
+        expiresAt: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -53,6 +65,15 @@ export async function POST(request: NextRequest) {
       : `API Key ${new Date().toISOString()}`
     const permissions = normalizePermissions(body.permissions)
     const enabled = typeof body.enabled === 'boolean' ? body.enabled : true
+    const expiresAt = normalizeExpiresAt(body.expiresAt)
+
+    if (body.expiresAt !== undefined && expiresAt === undefined) {
+      return NextResponse.json({ error: 'expiresAt 格式错误' }, { status: 400 })
+    }
+
+    if (expiresAt && expiresAt <= new Date()) {
+      return NextResponse.json({ error: 'expiresAt 必须是未来时间' }, { status: 400 })
+    }
 
     const rawKey = generateApiKey()
     const keyHash = hashApiKey(rawKey)
@@ -63,16 +84,21 @@ export async function POST(request: NextRequest) {
         name,
         keyHash,
         keyPrefix,
+        createdById: session.user.id,
         permissions: permissions.length > 0 ? permissions : ['POST_READ'],
         enabled,
+        expiresAt: expiresAt ?? null,
       },
       select: {
         id: true,
         name: true,
         keyPrefix: true,
+        createdById: true,
         permissions: true,
         enabled: true,
         lastUsedAt: true,
+        lastUsedIp: true,
+        expiresAt: true,
         createdAt: true,
         updatedAt: true,
       },
