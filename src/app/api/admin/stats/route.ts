@@ -95,33 +95,42 @@ export async function GET() {
       },
     })
 
-    // 获取最近30天的阅读量趋势
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    // 获取最近30天的阅读量趋势（UTC日粒度）
+    const startOfUtcDay = (date: Date) =>
+      new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+    const dateKey = (date: Date) => date.toISOString().split('T')[0]
 
-    const analyticsTrend = await prisma.analytics.findMany({
+    const todayUtc = startOfUtcDay(new Date())
+    const thirtyDaysStartUtc = new Date(todayUtc)
+    thirtyDaysStartUtc.setUTCDate(thirtyDaysStartUtc.getUTCDate() - 29)
+
+    const dailyTrend = await prisma.dailyView.groupBy({
+      by: ['date'],
       where: {
-        date: { gte: thirtyDaysAgo },
+        date: {
+          gte: thirtyDaysStartUtc,
+          lte: todayUtc,
+        },
       },
-      orderBy: { date: 'asc' },
-      select: {
-        date: true,
+      _sum: {
         views: true,
+      },
+      orderBy: {
+        date: 'asc',
       },
     })
 
-    const viewTrendByDate = analyticsTrend.reduce((acc, item) => {
-      const date = new Date(item.date).toISOString().split('T')[0]
-      acc[date] = (acc[date] || 0) + (item.views || 0)
+    const viewTrendByDate = dailyTrend.reduce((acc, item) => {
+      const key = dateKey(item.date)
+      acc[key] = item._sum.views || 0
       return acc
     }, {} as Record<string, number>)
 
     const dates: string[] = []
-    const today = new Date()
-    for (let i = 29; i >= 0; i -= 1) {
-      const d = new Date(today)
-      d.setDate(today.getDate() - i)
-      dates.push(d.toISOString().split('T')[0])
+    for (let i = 0; i < 30; i += 1) {
+      const d = new Date(thirtyDaysStartUtc)
+      d.setUTCDate(thirtyDaysStartUtc.getUTCDate() + i)
+      dates.push(dateKey(d))
     }
 
     const chartData = dates.map((date) => ({

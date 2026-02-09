@@ -139,6 +139,7 @@ model Post {
   postTags    PostTag[]
   comments    Comment[]
   viewCount   ViewCount?
+  dailyViews  DailyView[]
   analytics   Analytics?
   readingTime Int?       // in minutes
   isProtected Boolean    @default(false)
@@ -212,6 +213,20 @@ model ViewCount {
   count     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model DailyView {
+  id        String   @id @default(cuid())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    String
+  date      DateTime
+  views     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date, postId])
+  @@index([date])
+  @@index([postId])
 }
 
 model Analytics {

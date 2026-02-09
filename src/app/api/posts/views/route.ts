@@ -44,12 +44,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const viewCount = await prisma.viewCount.upsert({
-      where: { postId: post.id },
-      create: { postId: post.id, count: 1 },
-      update: { count: { increment: 1 } },
-      select: { count: true },
-    })
+    const now = new Date()
+    const dayStartUtc = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    )
+
+    const [, viewCount] = await prisma.$transaction([
+      prisma.dailyView.upsert({
+        where: {
+          date_postId: {
+            date: dayStartUtc,
+            postId: post.id,
+          },
+        },
+        create: {
+          postId: post.id,
+          date: dayStartUtc,
+          views: 1,
+        },
+        update: {
+          views: { increment: 1 },
+        },
+      }),
+      prisma.viewCount.upsert({
+        where: { postId: post.id },
+        create: { postId: post.id, count: 1 },
+        update: { count: { increment: 1 } },
+        select: { count: true },
+      }),
+    ])
 
     return NextResponse.json(
       { count: viewCount.count },
@@ -60,4 +83,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '更新阅读量失败' }, { status: 500 })
   }
 }
-

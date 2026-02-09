@@ -23,8 +23,8 @@ export function ViewsChart({ data }: ViewsChartProps) {
 
   const maxViews = Math.max(...chartData.map((d) => d.views))
   const hasData = maxViews > 0
-  const minDate = new Date(chartData[0].date)
-  const maxDate = new Date(chartData[chartData.length - 1].date)
+  const minDate = new Date(`${chartData[0].date}T00:00:00`)
+  const maxDate = new Date(`${chartData[chartData.length - 1].date}T00:00:00`)
 
   return (
     <Card>
@@ -39,8 +39,6 @@ export function ViewsChart({ data }: ViewsChartProps) {
           <div className="flex items-stretch justify-between gap-1 h-full px-2">
             {chartData.map((item, index) => {
               const height = maxViews > 0 ? (item.views / maxViews) * 100 : 12
-              const date = new Date(item.date)
-              const day = date.getDate()
 
               return (
                 <div
@@ -73,7 +71,7 @@ export function ViewsChart({ data }: ViewsChartProps) {
             <span>{chartData[Math.floor(chartData.length / 2)].date}</span>
             <span>{chartData[chartData.length - 1].date}</span>
           </div>
-          {!hasSource && (
+          {!hasData && (
             <div className="mt-3 text-center text-xs text-gray-400">
               近 30 天暂无阅读数据（已显示占位趋势）
             </div>
