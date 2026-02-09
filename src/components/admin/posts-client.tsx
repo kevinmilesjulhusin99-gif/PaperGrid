@@ -20,6 +20,8 @@ import { PostsFilters } from '@/components/admin/posts-filters'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 
+const FILTER_DEBOUNCE_MS = 200
+
 type CategoryOption = {
   id: string
   name: string
@@ -37,6 +39,23 @@ type PostRecord = {
   _count: { comments: number }
 }
 
+type FilterState = {
+  query: string
+  status: string
+  categoryId: string
+}
+
+type QueryState = FilterState & {
+  page: number
+}
+
+type PaginationState = {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
 function formatDateLabel(value: string | Date): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '-'
@@ -47,12 +66,38 @@ function formatDateLabel(value: string | Date): string {
   return `${year}-${month}-${day}`
 }
 
+function normalizePositiveInt(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
+  const parsed = Math.floor(value)
+  return parsed > 0 ? parsed : fallback
+}
+
+function normalizePagination(raw: unknown, fallback: PaginationState): PaginationState {
+  if (!raw || typeof raw !== 'object') return fallback
+
+  const next = raw as Partial<PaginationState>
+  const limit = normalizePositiveInt(next.limit, fallback.limit)
+  const total = typeof next.total === 'number' && Number.isFinite(next.total)
+    ? Math.max(0, Math.floor(next.total))
+    : fallback.total
+  const totalPages = Math.max(1, normalizePositiveInt(next.totalPages, fallback.totalPages))
+  const page = Math.min(normalizePositiveInt(next.page, fallback.page), totalPages)
+
+  return {
+    page,
+    limit,
+    total,
+    totalPages,
+  }
+}
+
 interface AdminPostsClientProps {
   initialPosts: PostRecord[]
   categories: CategoryOption[]
   initialQuery: string
   initialStatus: string
   initialCategoryId: string
+  initialPagination: PaginationState
 }
 
 export function AdminPostsClient({
@@ -61,53 +106,93 @@ export function AdminPostsClient({
   initialQuery,
   initialStatus,
   initialCategoryId,
+  initialPagination,
 }: AdminPostsClientProps) {
   const { toast } = useToast()
   const [posts, setPosts] = useState<PostRecord[]>(initialPosts)
-  const [filters, setFilters] = useState({
+  const [queryState, setQueryState] = useState<QueryState>({
     query: initialQuery,
     status: initialStatus,
     categoryId: initialCategoryId,
+    page: initialPagination.page,
   })
+  const [pagination, setPagination] = useState<PaginationState>(initialPagination)
   const [loading, setLoading] = useState(false)
   const [overlayVisible, setOverlayVisible] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [refreshToken, setRefreshToken] = useState(0)
   const didMountRef = useRef(false)
+  const skipNextFetchRef = useRef(false)
   const overlayStartRef = useRef<number | null>(null)
   const overlayTimersRef = useRef<{ show?: ReturnType<typeof setTimeout>; hide?: ReturnType<typeof setTimeout> }>({})
 
   useEffect(() => {
+    if (skipNextFetchRef.current) {
+      skipNextFetchRef.current = false
+      return
+    }
+
     if (!didMountRef.current) {
       didMountRef.current = true
       return
     }
 
+    const controller = new AbortController()
+
     const fetchPosts = async () => {
       try {
         setLoading(true)
         const params = new URLSearchParams()
-        if (filters.query) params.set('q', filters.query)
-        if (filters.status) params.set('status', filters.status)
-        if (filters.categoryId) params.set('categoryId', filters.categoryId)
+        if (queryState.query) params.set('q', queryState.query)
+        if (queryState.status) params.set('status', queryState.status)
+        if (queryState.categoryId) params.set('categoryId', queryState.categoryId)
+        params.set('page', queryState.page.toString())
+        params.set('limit', pagination.limit.toString())
 
-        const res = await fetch(`/api/admin/posts?${params.toString()}`)
+        const res = await fetch(`/api/admin/posts?${params.toString()}`, {
+          signal: controller.signal,
+          cache: 'no-store',
+        })
         const data = await res.json()
-        if (res.ok) {
-          setPosts(data.posts || [])
-        } else {
+
+        if (!res.ok) {
           toast({ title: '错误', description: data.error || '获取文章失败', variant: 'destructive' })
+          return
+        }
+
+        const nextPosts = Array.isArray(data.posts) ? data.posts : []
+        const nextPagination = normalizePagination(data.pagination, {
+          page: queryState.page,
+          limit: pagination.limit,
+          total: 0,
+          totalPages: 1,
+        })
+
+        setPosts(nextPosts)
+        setPagination(nextPagination)
+
+        if (nextPagination.page !== queryState.page) {
+          skipNextFetchRef.current = true
+          setQueryState((prev) => ({ ...prev, page: nextPagination.page }))
         }
       } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return
         console.error('获取文章失败:', error)
         toast({ title: '错误', description: '获取文章失败', variant: 'destructive' })
       } finally {
-        setLoading(false)
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
       }
     }
 
-    const timer = setTimeout(fetchPosts, 200)
-    return () => clearTimeout(timer)
-  }, [filters, toast])
+    const timer = setTimeout(fetchPosts, FILTER_DEBOUNCE_MS)
+
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [queryState, pagination.limit, refreshToken, toast])
 
   useEffect(() => {
     const timers = overlayTimersRef.current
@@ -141,20 +226,45 @@ export function AdminPostsClient({
   }, [loading, overlayVisible])
 
   const stats = useMemo(() => {
-    const total = posts.length
+    const total = pagination.total
     const published = posts.filter((p) => p.status === 'PUBLISHED').length
     const draft = posts.filter((p) => p.status === 'DRAFT').length
     const comments = posts.reduce((sum, p) => sum + (p._count?.comments || 0), 0)
     return { total, published, draft, comments }
-  }, [posts])
+  }, [posts, pagination.total])
+
+  const handleFiltersChange = (nextFilters: FilterState) => {
+    setQueryState((prev) => {
+      const changed =
+        prev.query !== nextFilters.query
+        || prev.status !== nextFilters.status
+        || prev.categoryId !== nextFilters.categoryId
+
+      if (!changed) return prev
+
+      return {
+        ...prev,
+        ...nextFilters,
+        page: 1,
+      }
+    })
+  }
+
+  const handlePageChange = (nextPage: number) => {
+    setQueryState((prev) => {
+      const page = Math.min(Math.max(nextPage, 1), Math.max(1, pagination.totalPages))
+      if (page === prev.page) return prev
+      return { ...prev, page }
+    })
+  }
 
   const deletePost = async (id: string) => {
     try {
       setDeletingId(id)
       const res = await fetch(`/api/posts/${id}`, { method: 'DELETE' })
       if (res.ok) {
-        setPosts((prev) => prev.filter((post) => post.id !== id))
         toast({ title: '成功', description: '文章已删除' })
+        setRefreshToken((prev) => prev + 1)
       } else {
         const data = await res.json()
         toast({ title: '错误', description: data.error || '删除失败', variant: 'destructive' })
@@ -227,10 +337,10 @@ export function AdminPostsClient({
         <CardHeader>
           <PostsFilters
             categories={categories}
-            initialQuery={filters.query}
-            initialStatus={filters.status}
-            initialCategoryId={filters.categoryId}
-            onChange={setFilters}
+            initialQuery={queryState.query}
+            initialStatus={queryState.status}
+            initialCategoryId={queryState.categoryId}
+            onChange={handleFiltersChange}
             loading={loading}
           />
         </CardHeader>
@@ -260,7 +370,7 @@ export function AdminPostsClient({
             ) : (
               <>
                 {/* Mobile list */}
-                <div className="md:hidden space-y-3 p-4">
+                <div className="space-y-3 p-4 md:hidden">
                   {posts.map((post) => (
                     <div key={post.id} className="rounded-lg border p-4">
                       <div className="flex items-start justify-between gap-3">
@@ -331,7 +441,7 @@ export function AdminPostsClient({
                 </div>
 
                 {/* Desktop table */}
-                <div className="hidden md:block overflow-x-auto">
+                <div className="hidden overflow-x-auto md:block">
                   <table className="w-full">
                     <thead className="border-b border-gray-200 dark:border-gray-700">
                       <tr className="text-left text-sm text-gray-500 dark:text-gray-400">
@@ -435,6 +545,30 @@ export function AdminPostsClient({
                 </div>
               </>
             )}
+          </div>
+
+          <div className="flex flex-col gap-3 border-t px-4 py-3 md:flex-row md:items-center md:justify-between md:px-6">
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              共 {pagination.total} 篇，当前第 {pagination.page} / {pagination.totalPages} 页
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={loading || pagination.page <= 1}
+              >
+                上一页
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={loading || pagination.page >= pagination.totalPages}
+              >
+                下一页
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
