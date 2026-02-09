@@ -37,6 +37,16 @@ type PostRecord = {
   _count: { comments: number }
 }
 
+function formatDateLabel(value: string | Date): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+
+  const year = date.getUTCFullYear()
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(date.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 interface AdminPostsClientProps {
   initialPosts: PostRecord[]
   categories: CategoryOption[]
@@ -283,7 +293,7 @@ export function AdminPostsClient({
                       <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                         <span>分类：{post.category?.name || '-'}</span>
                         <span>评论：{post._count.comments}</span>
-                        <span>更新：{new Date(post.updatedAt).toLocaleDateString('zh-CN')}</span>
+                        <span>更新：{formatDateLabel(post.updatedAt)}</span>
                       </div>
                       <div className="mt-3 flex items-center gap-2">
                         <Link href={`/admin/posts/editor?id=${post.id}`}>
@@ -380,10 +390,10 @@ export function AdminPostsClient({
                             {post._count.comments}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                            {new Date(post.createdAt).toLocaleDateString('zh-CN')}
+                            {formatDateLabel(post.createdAt)}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                            {new Date(post.updatedAt).toLocaleDateString('zh-CN')}
+                            {formatDateLabel(post.updatedAt)}
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">

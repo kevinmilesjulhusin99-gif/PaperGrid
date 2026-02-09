@@ -14,6 +14,7 @@ export function Footer({ settings }: { settings?: Record<string, unknown> }) {
   const poweredBy = getStr('site.footer_powered_by')
   const ownerName = getStr('site.ownerName', '千叶')
   const description = getStr('site.description', '分享技术文章、生活记录和作品展示的个人博客。')
+  const currentYear = getStr('site.currentYear', String(new Date().getUTCFullYear()))
 
   if (pathname?.startsWith('/admin')) return null
 
@@ -158,7 +159,7 @@ export function Footer({ settings }: { settings?: Record<string, unknown> }) {
                 </a>
               </p>
             )}
-            <p>{copyright || `© ${new Date().getFullYear()} ${ownerName}. 保留所有权利.`}</p>
+            <p>{copyright || `© ${currentYear} ${ownerName}. 保留所有权利.`}</p>
             {poweredBy && <p className="opacity-80">{poweredBy}</p>}
           </div>
         </div>

@@ -46,10 +46,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const currentYear = String(new Date().getUTCFullYear())
   const [defaultTheme, publicSettings] = await Promise.all([
     getSetting<string>('site.defaultTheme', 'system'),
     getPublicSettings(),
   ])
+  const footerSettings = { ...publicSettings, 'site.currentYear': currentYear }
 
   return (
     <html lang="zh" suppressHydrationWarning>
@@ -72,7 +74,7 @@ export default async function RootLayout({
               <main className="flex-1">
                 <PageTransition>{children}</PageTransition>
               </main>
-              <Footer settings={publicSettings} />
+              <Footer settings={footerSettings} />
               <BackToTop />
               <Toaster />
             </div>

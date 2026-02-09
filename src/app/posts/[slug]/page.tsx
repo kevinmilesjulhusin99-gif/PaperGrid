@@ -44,6 +44,23 @@ export default async function PostPage({ params }: PostPageProps) {
   const mobileReadingBackground = normalizeMobileReadingBackground(mobileReadingBackgroundRaw)
   const { cardClassName: contentCardClassName, contentClassName: contentPaddingClassName } = getReadingContentClasses(mobileReadingBackground)
 
+  const formatRelativeTimeLabel = (value: string | Date | null | undefined) => {
+    if (!value) return ''
+    return formatDistanceToNow(new Date(value), {
+      addSuffix: true,
+      locale: zhCN,
+    })
+  }
+
+  const formatUpdatedAtLabel = (
+    updatedAt: string | Date | null | undefined,
+    publishedAt: string | Date | null | undefined,
+  ) => {
+    if (!updatedAt || !publishedAt) return null
+    if (new Date(updatedAt).getTime() - new Date(publishedAt).getTime() <= 60000) return null
+    return format(new Date(updatedAt), 'yyyy-MM-dd HH:mm')
+  }
+
   // 获取文章详情
   const basePost = await prisma.post.findFirst({
     where: {
@@ -164,12 +181,21 @@ export default async function PostPage({ params }: PostPageProps) {
     ])
 
     const { content: _content, ...safePost } = basePost
+    const safePostWithLabels = {
+      ...safePost,
+      publishedLabel: formatRelativeTimeLabel(safePost.publishedAt),
+      updatedAtLabel: formatUpdatedAtLabel(safePost.updatedAt, safePost.publishedAt),
+    }
+    const relatedPostsWithLabels = relatedPosts.map((item) => ({
+      ...item,
+      publishedLabel: formatRelativeTimeLabel(item.publishedAt),
+    }))
     return (
       <ProtectedPostPage
-        post={safePost}
+        post={safePostWithLabels}
         prevPost={prevPost}
         nextPost={nextPost}
-        relatedPosts={relatedPosts}
+        relatedPosts={relatedPostsWithLabels}
         commentsEnabled={commentsEnabled}
         allowGuest={!!allowGuest}
         ownerName={ownerName}

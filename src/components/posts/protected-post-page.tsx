@@ -1,10 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Calendar, Clock, Eye, User, ArrowLeft, ArrowRight, Edit3, Scissors, Lock } from 'lucide-react'
-import { formatDistanceToNow, format } from 'date-fns'
-import { zhCN } from 'date-fns/locale'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { TableOfContents, type HeadingItem } from '@/components/posts/table-of-contents'
@@ -33,6 +31,8 @@ type ProtectedPost = {
   slug: string
   excerpt: string | null
   coverImage: string | null
+  publishedLabel: string
+  updatedAtLabel: string | null
   publishedAt: string | Date | null
   updatedAt: string | Date
   readingTime: number | null
@@ -50,6 +50,7 @@ type RelatedPost = {
   slug: string
   excerpt: string | null
   coverImage: string | null
+  publishedLabel: string
   publishedAt: string | Date | null
   isProtected?: boolean
   viewCount?: { count: number } | null
@@ -157,14 +158,6 @@ export function ProtectedPostPage({
 
   const canShowContent = content !== null
 
-  const publishedLabel = useMemo(() => {
-    if (!post.publishedAt) return ''
-    return formatDistanceToNow(new Date(post.publishedAt), {
-      addSuffix: true,
-      locale: zhCN,
-    })
-  }, [post.publishedAt])
-
   return (
     <div className="min-h-screen">
       <PostTitleSync title={post.title} />
@@ -198,7 +191,7 @@ export function ProtectedPostPage({
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              <time>{publishedLabel}</time>
+              <time>{post.publishedLabel}</time>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
@@ -215,11 +208,11 @@ export function ProtectedPostPage({
                 次阅读
               </span>
             </div>
-            {post.updatedAt && post.publishedAt && new Date(post.updatedAt).getTime() - new Date(post.publishedAt).getTime() > 60000 && (
+            {post.updatedAtLabel && (
               <div className="flex items-center gap-2 text-primary font-medium">
                 <Edit3 className="h-4 w-4" />
                 <span>
-                  最后编辑于 {format(new Date(post.updatedAt), 'yyyy-MM-dd HH:mm')}
+                  最后编辑于 {post.updatedAtLabel}
                 </span>
               </div>
             )}
@@ -412,13 +405,7 @@ export function ProtectedPostPage({
                                 {related.title}
                               </p>
                               <div className="mt-1 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                                <span>
-                                  {related.publishedAt &&
-                                    formatDistanceToNow(new Date(related.publishedAt), {
-                                      addSuffix: true,
-                                      locale: zhCN,
-                                    })}
-                                </span>
+                                <span>{related.publishedLabel}</span>
                                 <span>•</span>
                                 <Eye className="inline h-3 w-3" />
                                 <span>{related.viewCount?.count || 0}</span>
