@@ -19,10 +19,11 @@
 ```yaml
 services:
   app:
+
     image: ghcr.io/xywml/papergrid:latest
     container_name: papergrid
     ports:
-      - "6066:3000"
+      - "127.0.0.1:6066:3000"
     environment:
       # 建议持久化到数据卷，避免容器重建丢数据
       DATABASE_URL: "file:/data/db.sqlite"

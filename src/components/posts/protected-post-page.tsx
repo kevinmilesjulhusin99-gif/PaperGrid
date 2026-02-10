@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Calendar, Clock, Eye, User, ArrowLeft, ArrowRight, Edit3, Scissors, Lock } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,6 +15,7 @@ import { ViewCount } from '@/components/posts/view-count'
 import { extractHeadingsFromMarkdown } from '@/lib/markdown'
 import { getReadingContentClasses, type MobileReadingBackground } from '@/lib/reading-style'
 import { MDXContentClient } from '@/components/posts/mdx-content-client'
+import { isInternalImageUrl } from '@/lib/image-url'
 
 const UNLOCK_STORAGE_PREFIX = 'pg_post_unlock_'
 
@@ -265,13 +267,25 @@ export function ProtectedPostPage({
               {/* 封面图 */}
               {post.coverImage && (
                 <div className="mb-8 overflow-hidden rounded-lg">
-                  <img
-                    src={post.coverImage}
-                    alt={post.title}
-                    className="w-full object-cover"
-                    loading="eager"
-                    decoding="async"
-                  />
+                  {isInternalImageUrl(post.coverImage) ? (
+                    <Image
+                      src={post.coverImage}
+                      alt={post.title}
+                      width={1600}
+                      height={900}
+                      priority
+                      sizes="(min-width: 1280px) 1152px, (min-width: 1024px) 896px, 100vw"
+                      className="h-auto w-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={post.coverImage}
+                      alt={post.title}
+                      className="w-full object-cover"
+                      loading="eager"
+                      decoding="async"
+                    />
+                  )}
                 </div>
               )}
 

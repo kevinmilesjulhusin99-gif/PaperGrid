@@ -9,6 +9,7 @@ import { Calendar, Clock, Eye, User, ArrowLeft, ArrowRight, Edit3, Scissors, Loc
 import { formatDistanceToNow, format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import Link from 'next/link'
+import Image from 'next/image'
 import { TableOfContents, type HeadingItem } from '@/components/posts/table-of-contents'
 import { CommentSection } from '@/components/comments/comment-section'
 import { PostTitleSync } from '@/components/posts/post-title-sync'
@@ -18,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ViewCount } from '@/components/posts/view-count'
 import { extractHeadingsFromMarkdown } from '@/lib/markdown'
 import { ProtectedPostPage } from '@/components/posts/protected-post-page'
+import { isInternalImageUrl } from '@/lib/image-url'
 
 export const revalidate = 60
 
@@ -382,13 +384,25 @@ export default async function PostPage({ params }: PostPageProps) {
               {/* 封面图 */}
               {post.coverImage && (
                 <div className="mb-8 overflow-hidden rounded-lg">
-                  <img
-                    src={post.coverImage}
-                    alt={post.title}
-                    className="w-full object-cover"
-                    loading="eager"
-                    decoding="async"
-                  />
+                  {isInternalImageUrl(post.coverImage) ? (
+                    <Image
+                      src={post.coverImage}
+                      alt={post.title}
+                      width={1600}
+                      height={900}
+                      priority
+                      sizes="(min-width: 1280px) 1152px, (min-width: 1024px) 896px, 100vw"
+                      className="h-auto w-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={post.coverImage}
+                      alt={post.title}
+                      className="w-full object-cover"
+                      loading="eager"
+                      decoding="async"
+                    />
+                  )}
                 </div>
               )}
 

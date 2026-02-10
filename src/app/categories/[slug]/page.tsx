@@ -7,6 +7,8 @@ import { Calendar, Clock, Eye, FolderOpen, ArrowLeft, Lock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import Link from 'next/link'
+import Image from 'next/image'
+import { isInternalImageUrl } from '@/lib/image-url'
 
 export const revalidate = 60
 
@@ -170,14 +172,24 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                   >
                     <Link href={`/posts/${post.slug}`}>
                       {post.coverImage && (
-                        <div className="aspect-video w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
-                          <img
-                            src={post.coverImage}
-                            alt={post.title}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                            decoding="async"
-                          />
+                        <div className="relative aspect-video w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
+                          {isInternalImageUrl(post.coverImage) ? (
+                            <Image
+                              src={post.coverImage}
+                              alt={post.title}
+                              fill
+                              sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                              className="object-cover"
+                            />
+                          ) : (
+                            <img
+                              src={post.coverImage}
+                              alt={post.title}
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          )}
                         </div>
                       )}
                       <CardHeader className="space-y-2 pb-0">

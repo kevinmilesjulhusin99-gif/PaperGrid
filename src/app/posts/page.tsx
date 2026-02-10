@@ -4,11 +4,13 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Eye, Lock } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { PostFilters } from '@/components/posts/post-filters'
 import { getSetting } from '@/lib/settings'
 import { Suspense } from 'react'
 import { PostMeta } from '@/components/posts/post-meta'
 import { SectionHeadingAccent } from '@/components/layout/section-heading-accent'
+import { isInternalImageUrl } from '@/lib/image-url'
 
 export const revalidate = 60
 
@@ -213,14 +215,24 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
                     >
                       <Link href={`/posts/${post.slug}`}>
                         {post.coverImage && (
-                          <div className="aspect-video w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
-                            <img
-                              src={post.coverImage}
-                              alt={post.title}
-                              className="h-full w-full object-cover"
-                              loading="lazy"
-                              decoding="async"
-                            />
+                          <div className="relative aspect-video w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
+                            {isInternalImageUrl(post.coverImage) ? (
+                              <Image
+                                src={post.coverImage}
+                                alt={post.title}
+                                fill
+                                sizes="(min-width: 1024px) 37vw, (min-width: 640px) 50vw, 100vw"
+                                className="object-cover"
+                              />
+                            ) : (
+                              <img
+                                src={post.coverImage}
+                                alt={post.title}
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            )}
                           </div>
                         )}
                         <CardHeader className="space-y-2 pb-0">
