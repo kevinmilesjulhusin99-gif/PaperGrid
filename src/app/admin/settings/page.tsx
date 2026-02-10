@@ -247,18 +247,6 @@ export default function AdminSettingsPage() {
           <CardTitle>管理员账号</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">登录页显示默认管理员账号</label>
-            <select
-              className="mt-2 w-full rounded border bg-transparent px-3 py-2"
-              value={getVal('ui.showDefaultAdminHint') ? 'true' : 'false'}
-              onChange={(e) => setVal('ui.showDefaultAdminHint', e.target.value === 'true')}
-            >
-              <option value="true">显示</option>
-              <option value="false">隐藏</option>
-            </select>
-            <p className="mt-1 text-xs text-muted-foreground">仅影响登录页的默认账号提示。</p>
-          </div>
           {initialSetup && (
             <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-100">
               <p className="font-medium">首次登录请尽快修改管理员账号与密码</p>

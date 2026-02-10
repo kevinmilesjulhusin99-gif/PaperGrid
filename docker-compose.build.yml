@@ -6,7 +6,7 @@ services:
     image: papergrid-local:latest
     container_name: papergrid
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       DATABASE_URL: "file:/data/db.sqlite"
       NEXTAUTH_URL: "http://localhost:3000"

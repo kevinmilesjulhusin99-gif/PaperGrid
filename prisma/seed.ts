@@ -40,7 +40,6 @@ async function main() {
     { key: 'site.defaultTheme', value: { theme: 'system' }, group: 'display', editable: true },
     { key: 'site.defaultAvatarUrl', value: { url: '' }, group: 'site', editable: true },
     { key: 'ui.hideAdminEntry', value: { enabled: false }, group: 'ui', editable: true },
-    { key: 'ui.showDefaultAdminHint', value: { enabled: true }, group: 'ui', editable: true },
     { key: 'ui.mobileReadingBackground', value: { style: 'grid' }, group: 'ui', editable: true },
     { key: 'hero.typingTitles', value: { text: '欢迎来到我的博客\n探索技术的无限可能\n记录成长的点点滴滴\n分享代码与生活的美好' }, group: 'hero', editable: true },
     { key: 'hero.subtitle', value: { text: '全栈开发者 / 开源爱好者 / 终身学习者' }, group: 'hero', editable: true },

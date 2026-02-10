@@ -5,7 +5,7 @@ import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Github, Mail } from 'lucide-react'
 
-export function SignInForm({ showDefaultHint = false }: { showDefaultHint?: boolean }) {
+export function SignInForm() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -146,14 +146,6 @@ export function SignInForm({ showDefaultHint = false }: { showDefaultHint?: bool
           </a>
         </p>
 
-        {/* Default Account Hint */}
-        {showDefaultHint && (
-          <div className="rounded-lg bg-blue-50 p-4 text-sm text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-            <p className="font-medium">默认管理员账号:</p>
-            <p className="mt-1">邮箱: admin@example.com</p>
-            <p>密码: admin123</p>
-          </div>
-        )}
       </div>
     </div>
   )

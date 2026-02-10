@@ -67,7 +67,6 @@ export async function POST(request: NextRequest) {
       message: '默认管理员账号创建成功!',
       data: {
         email: 'admin@example.com',
-        password: initPassword,
         userId: admin.id,
       },
     })

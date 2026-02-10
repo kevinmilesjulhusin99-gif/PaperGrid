@@ -41,17 +41,6 @@ export async function GET() {
       })
     }
 
-    if (!payload.find((s) => s.key === 'ui.showDefaultAdminHint')) {
-      payload.push({
-        key: 'ui.showDefaultAdminHint',
-        value: { enabled: true },
-        group: 'ui',
-        editable: true,
-        secret: false,
-        description: '登录页显示默认管理员账号',
-      })
-    }
-
     if (!payload.find((s) => s.key === 'ui.mobileReadingBackground')) {
       payload.push({
         key: 'ui.mobileReadingBackground',
@@ -90,7 +79,7 @@ export async function PATCH(request: NextRequest) {
     for (const u of updates) {
       const s = await prisma.setting.findUnique({ where: { key: u.key } })
       if (!s) {
-        if (u.key === 'ui.showDefaultAdminHint' || u.key === 'ui.mobileReadingBackground') {
+        if (u.key === 'ui.mobileReadingBackground') {
           await prisma.setting.create({
             data: {
               key: u.key,

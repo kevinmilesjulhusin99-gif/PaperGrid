@@ -1,3 +1,5 @@
+import { isIP } from 'node:net'
+
 type Bucket = {
   tokens: number
   lastRefill: number
@@ -38,21 +40,29 @@ function cleanupStore(now: number, windowMs: number) {
   }
 }
 
+function normalizeIp(raw: string | null): string | null {
+  if (!raw) return null
+
+  const [first] = raw.split(',')
+  const candidate = first?.trim()
+  if (!candidate) return null
+
+  const bracket = candidate.match(/^\[([^\]]+)\](?::\d+)?$/)
+  const unwrapped = bracket ? bracket[1] : candidate
+  const ipv4Mapped = unwrapped.startsWith('::ffff:') ? unwrapped.slice(7) : unwrapped
+
+  return isIP(ipv4Mapped) === 0 ? null : ipv4Mapped
+}
+
 export function getClientIp(request: Request): string {
-  const xff = request.headers.get('x-forwarded-for')
-  if (xff) {
-    const [first] = xff.split(',')
-    if (first) return first.trim()
-  }
+  const realIp = normalizeIp(request.headers.get('x-real-ip'))
+  if (realIp) return realIp
 
-  const realIp = request.headers.get('x-real-ip')
-  if (realIp) return realIp.trim()
+  const cfIp = normalizeIp(request.headers.get('cf-connecting-ip'))
+  if (cfIp) return cfIp
 
-  const cfIp = request.headers.get('cf-connecting-ip')
-  if (cfIp) return cfIp.trim()
-
-  const vercelIp = request.headers.get('x-vercel-forwarded-for')
-  if (vercelIp) return vercelIp.trim()
+  const vercelIp = normalizeIp(request.headers.get('x-vercel-forwarded-for'))
+  if (vercelIp) return vercelIp
 
   return 'unknown'
 }
