@@ -590,13 +590,11 @@ export default function AdminSettingsPage() {
                     onClick={async () => {
                       const title = (document.getElementById('gotify-test-title') as HTMLInputElement)?.value
                       const message = (document.getElementById('gotify-test-message') as HTMLInputElement)?.value
-                      const url = String(getVal('notifications.gotify.url') || '')
-                      const token = (document.getElementById('gotify-token-input') as HTMLInputElement)?.value || ''
                       try {
                         const res = await fetch('/api/admin/settings/test-gotify', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ title, message, url, token }),
+                          body: JSON.stringify({ title, message }),
                         })
                         const data = await res.json()
                         if (res.ok) {
@@ -613,6 +611,7 @@ export default function AdminSettingsPage() {
                     发送测试
                   </Button>
                 </div>
+                <p className="text-sm text-muted-foreground mt-2">测试推送仅使用服务端配置（环境变量或已保存设置），不会从浏览器传递 Token。</p>
               </div>
             </div>
 

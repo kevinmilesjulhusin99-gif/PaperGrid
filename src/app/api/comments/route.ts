@@ -1,10 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
 import sanitizeHtml from 'sanitize-html'
 import { getClientIp, rateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { getPostUnlockTokenFromHeaders, verifyPostUnlockToken } from '@/lib/post-protection'
+import { sendCommentGotifyNotification, type CommentGotifyNotificationInput } from '@/lib/notifications/gotify-service'
+
+function sendCommentGotifyNotificationAsync(comment: CommentGotifyNotificationInput) {
+  after(async () => {
+    try {
+      await sendCommentGotifyNotification(comment)
+    } catch (notifyError) {
+      console.error('Gotify 通知发送失败:', notifyError)
+    }
+  })
+}
 
 // GET /api/comments?slug=xxx - 获取文章的所有评论
 export async function GET(request: NextRequest) {
@@ -129,9 +140,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const allowGuest = (await getSetting<boolean>('comments.allowGuest', false)) ?? false
-    const moderationRequired = (await getSetting<boolean>('comments.moderationRequired', false)) ?? false
-    const guestModerationRequired = (await getSetting<boolean>('comments.guestModerationRequired', false)) ?? false
+    const [allowGuestRaw, moderationRequiredRaw, guestModerationRequiredRaw] = await Promise.all([
+      getSetting<boolean>('comments.allowGuest', false),
+      getSetting<boolean>('comments.moderationRequired', false),
+      getSetting<boolean>('comments.guestModerationRequired', false),
+    ])
+    const allowGuest = allowGuestRaw ?? false
+    const moderationRequired = moderationRequiredRaw ?? false
+    const guestModerationRequired = guestModerationRequiredRaw ?? false
 
     const body = await request.json()
     const { content, authorName, authorEmail, parentId } = body
@@ -226,39 +242,11 @@ export async function POST(request: NextRequest) {
         post: {
           select: {
             title: true,
-            slug: true,
           },
         },
       },
     })
-
-    try {
-      const gotifyEnabled = (await getSetting<boolean>('notifications.gotify.enabled', false)) ?? false
-      if (gotifyEnabled) {
-        const notifyNew = (await getSetting<boolean>('notifications.gotify.notifyNewComment', true)) ?? true
-        const notifyPending = (await getSetting<boolean>('notifications.gotify.notifyPendingComment', true)) ?? true
-        const url = process.env.GOTIFY_URL || (await getSetting<string>('notifications.gotify.url', ''))
-        const token = process.env.GOTIFY_TOKEN || (await getSetting<string>('notifications.gotify.token', ''))
-
-        const shouldNotifyPending = comment.status === 'PENDING' && notifyPending
-        const shouldNotifyNew = comment.status === 'APPROVED' && notifyNew
-
-        if ((shouldNotifyPending || shouldNotifyNew) && url && token) {
-          const authorLabel = comment.author?.name || comment.authorName || '匿名用户'
-          const summary = comment.content.length > 120 ? `${comment.content.slice(0, 120)}…` : comment.content
-          const title = shouldNotifyPending ? '新评论待审核' : '新评论'
-          const message = [
-            `文章：${comment.post.title}`,
-            `作者：${authorLabel}`,
-            `摘要：${summary}`,
-          ].join('\n')
-          const { sendGotifyNotification } = await import('@/lib/notifications/gotify')
-          await sendGotifyNotification({ url, token, title, message, priority: shouldNotifyPending ? 8 : 5 })
-        }
-      }
-    } catch (notifyError) {
-      console.error('Gotify 通知发送失败:', notifyError)
-    }
+    sendCommentGotifyNotificationAsync(comment)
 
     const responseComment = {
       id: comment.id,

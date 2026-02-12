@@ -7,17 +7,21 @@ import { AdminNav } from '@/components/layout/admin-nav'
 
 export function AdminMobileSidebar({
   items,
-  logoSrc = '/logo.svg',
 }: {
   items: { href: string; iconName: string; label: string }[]
-  logoSrc?: string
 }) {
   const [open, setOpen] = useState(false)
 
   return (
     <div className="lg:hidden">
-      <Button variant="ghost" size="icon" onClick={() => setOpen(true)} aria-label="打开侧栏">
-        <Menu className="h-5 w-5" />
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label={open ? '关闭侧栏' : '打开侧栏'}
+      >
+        {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </Button>
 
       {open && (
@@ -27,15 +31,6 @@ export function AdminMobileSidebar({
           <div className="relative z-10 w-64 transform overflow-auto bg-white p-4 dark:bg-gray-800 transition-all duration-200 ease-out">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-md bg-primary p-0.5">
-                  <img
-                    src={logoSrc}
-                    alt="博客 logo"
-                    className="h-full w-full scale-110 object-cover"
-                    loading="eager"
-                    decoding="async"
-                  />
-                </div>
                 <h3 className="text-lg font-semibold">菜单</h3>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="关闭侧栏">

@@ -81,7 +81,8 @@ async function main() {
   for (const s of settings) {
     await prisma.setting.upsert({
       where: { key: s.key },
-      update: { value: s.value, group: s.group, editable: s.editable, secret: s.secret ?? false },
+      // 保留已有配置值，避免重复 seed 时覆盖管理员在后台保存的设置。
+      update: { group: s.group, editable: s.editable, secret: s.secret ?? false },
       create: s as any,
     })
   }

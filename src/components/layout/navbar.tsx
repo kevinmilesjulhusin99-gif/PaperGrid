@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { LogIn } from 'lucide-react'
+import { MobileNav } from '@/components/layout/mobile-nav'
 
 import { usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
@@ -28,8 +29,6 @@ export function Navbar({ settings }: { settings?: Record<string, unknown> }) {
   const titleClearRef = useRef<NodeJS.Timeout | null>(null)
   const s: Record<string, unknown> = settings || {}
   const hideAdminEntry = Boolean(s['ui.hideAdminEntry'])
-  const logoUrl = typeof s['site.logoUrl'] === 'string' ? s['site.logoUrl'] : ''
-  const logoSrc = logoUrl.trim() || '/logo.svg'
   const siteTitle = typeof s['site.title'] === 'string' ? s['site.title'] : '执笔为剑'
   const defaultAvatarUrl =
     typeof s['site.defaultAvatarUrl'] === 'string' ? s['site.defaultAvatarUrl'] : ''
@@ -56,12 +55,12 @@ export function Navbar({ settings }: { settings?: Record<string, unknown> }) {
   }, [isPostDetail])
 
   useEffect(() => {
-    const handleTitleChange = (e: any) => {
-      const nextTitle = e?.detail ?? ''
+    const handleTitleChange: EventListener = (event) => {
+      const nextTitle = (event as CustomEvent<string>).detail ?? ''
       if (!nextTitle && !isPostDetail) return
       setPostTitle(nextTitle)
     }
-    window.addEventListener('post-title-changed', handleTitleChange as EventListener)
+    window.addEventListener('post-title-changed', handleTitleChange)
 
     const handleScroll = () => {
       // Only show title UI on post detail pages and when there is a title
@@ -78,7 +77,7 @@ export function Navbar({ settings }: { settings?: Record<string, unknown> }) {
 
     window.addEventListener('scroll', handleScroll)
     return () => {
-      window.removeEventListener('post-title-changed', handleTitleChange as EventListener)
+      window.removeEventListener('post-title-changed', handleTitleChange)
       window.removeEventListener('scroll', handleScroll)
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
       if (titleClearRef.current) clearTimeout(titleClearRef.current)
@@ -91,21 +90,16 @@ export function Navbar({ settings }: { settings?: Record<string, unknown> }) {
   return (
     <nav className="sticky top-0 z-50 border-b border-gray-200 bg-white/80 backdrop-blur-lg dark:border-gray-800 dark:bg-gray-900/80">
       <div className="relative flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Logo */}
+        {/* 左侧菜单 */}
         <div
-          className={`transition-all duration-300 ${showProgressUI ? 'pointer-events-none -translate-x-4 scale-95 opacity-0' : 'translate-x-0 scale-100 opacity-100'}`}
+          className={`flex items-center gap-2 transition-all duration-300 ${showProgressUI ? 'pointer-events-none -translate-x-4 scale-95 opacity-0' : 'translate-x-0 scale-100 opacity-100'}`}
         >
-          <Link href="/" className="flex items-center gap-2">
-            <div className="bg-primary flex h-8 w-8 items-center justify-center overflow-hidden rounded-md p-0.5">
-              <img
-                src={logoSrc}
-                alt={`${siteTitle} logo`}
-                className="h-full w-full scale-110 object-cover"
-                loading="eager"
-                decoding="async"
-              />
-            </div>
-            <span className="hidden text-lg font-bold sm:inline-block">{siteTitle}</span>
+          <MobileNav showOnDesktop />
+          <Link
+            href="/"
+            className="max-w-[40vw] truncate text-base font-bold tracking-tight sm:max-w-none sm:text-lg"
+          >
+            {siteTitle}
           </Link>
         </div>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -10,21 +10,25 @@ import { useSession } from 'next-auth/react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 
+const subscribeHydration = () => () => {}
+
 export function MobileNav({
   isOpen,
   onOpenChange,
   side = 'left',
   showTrigger = true,
+  showOnDesktop = false,
 }: {
   isOpen?: boolean
   onOpenChange?: (v: boolean) => void
   side?: 'left' | 'top'
   showTrigger?: boolean
+  showOnDesktop?: boolean
 }) {
+  const isHydrated = useSyncExternalStore(subscribeHydration, () => true, () => false)
   const { data: session } = useSession()
   const [internalOpen, setInternalOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
-  const [settings, setSettings] = useState<any>(null)
+  const [settings, setSettings] = useState<Record<string, unknown>>({})
   const [isFocusInside, setIsFocusInside] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
@@ -37,24 +41,33 @@ export function MobileNav({
 
   const pathname = usePathname()
   const isAdmin = pathname?.startsWith('/admin')
-  const logoUrl = typeof settings?.['site.logoUrl'] === 'string' ? settings['site.logoUrl'] : ''
+  const getSettingString = (key: string, fallback = '') => {
+    const value = settings[key]
+    return typeof value === 'string' ? value : fallback
+  }
+  const logoUrl = getSettingString('site.logoUrl')
   const logoSrc = logoUrl.trim() || '/logo.svg'
-  const siteTitle = settings?.['site.title'] || '执笔为剑'
+  const siteTitle = getSettingString('site.title', '执笔为剑')
   const displayName = isAdmin
     ? session?.user?.name || '管理员'
-    : settings?.['site.ownerName'] || '千叶'
-  const tagline = settings?.['profile.tagline'] || '全栈开发者 / 技术分享'
+    : getSettingString('site.ownerName', '千叶')
+  const tagline = getSettingString('profile.tagline', '全栈开发者 / 技术分享')
   const signature =
-    settings?.['profile.signature'] || '“热爱技术, 喜欢分享。这里记录我的学习和成长过程。”'
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+    getSettingString('profile.signature', '“热爱技术, 喜欢分享。这里记录我的学习和成长过程。”')
+  const defaultAvatarUrl = getSettingString('site.defaultAvatarUrl')
+  const siteTitleForFooter = getSettingString('site.title', '执笔为剑')
+  const isTopDrawer = side === 'top'
 
   useEffect(() => {
     fetch('/api/settings/public')
       .then((res) => res.json())
-      .then((data) => setSettings(data))
+      .then((data: unknown) => {
+        if (typeof data === 'object' && data !== null) {
+          setSettings(data as Record<string, unknown>)
+          return
+        }
+        setSettings({})
+      })
       .catch((err) => console.error('Failed to load settings', err))
   }, [])
 
@@ -125,7 +138,7 @@ export function MobileNav({
   const SidebarContent = (
     <div
       ref={containerRef}
-      className={`fixed inset-0 z-[100] flex ${open ? 'pointer-events-auto' : 'pointer-events-none'}`}
+      className={`fixed inset-0 z-[100] flex ${isTopDrawer ? 'items-start' : ''} ${open ? 'pointer-events-auto' : 'pointer-events-none'}`}
       aria-hidden={!open && !isFocusInside}
       inert={!open && !isFocusInside ? true : undefined}
     >
@@ -137,7 +150,7 @@ export function MobileNav({
 
       {/* panel (left slide-in) */}
       <div
-        className={`cubic-bezier(0.16, 1, 0.3, 1) relative z-10 h-full w-72 transform bg-white p-6 shadow-2xl transition-transform duration-300 dark:bg-gray-900 ${open ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`cubic-bezier(0.16, 1, 0.3, 1) relative z-10 transform bg-white p-6 shadow-2xl transition-transform duration-300 dark:bg-gray-900 ${isTopDrawer ? 'max-h-[85vh] w-full overflow-auto' : 'h-full w-72'} ${open ? (isTopDrawer ? 'translate-y-0' : 'translate-x-0') : (isTopDrawer ? '-translate-y-full' : '-translate-x-full')}`}
       >
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -165,9 +178,7 @@ export function MobileNav({
         <div className="mb-6 space-y-4">
           <div className="flex items-center gap-3">
             <Avatar className="border-primary/10 h-12 w-12 border-2">
-              <AvatarImage
-                src={session?.user?.image || settings?.['site.defaultAvatarUrl'] || undefined}
-              />
+              <AvatarImage src={session?.user?.image || defaultAvatarUrl || undefined} />
               <AvatarFallback className="bg-primary/5 text-primary">
                 {session?.user?.name?.charAt(0).toUpperCase() || 'B'}
               </AvatarFallback>
@@ -203,8 +214,7 @@ export function MobileNav({
 
         <div className="absolute right-6 bottom-8 left-6">
           <p className="text-center text-xs text-gray-400 dark:text-gray-500">
-            © {new Date().getFullYear()} {settings?.['site.title'] || '执笔为剑'} · Built with
-            Next.js
+            © {new Date().getFullYear()} {siteTitleForFooter} · Built with Next.js
           </p>
         </div>
       </div>
@@ -213,21 +223,22 @@ export function MobileNav({
 
   return (
     <>
-      <div className="md:hidden">
+      <div className={showOnDesktop ? '' : 'md:hidden'}>
         {showTrigger && (
           <Button
             ref={triggerRef}
             variant="ghost"
             size="icon"
-            onClick={() => setOpen(true)}
-            aria-label="打开菜单"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            aria-label={open ? '关闭菜单' : '打开菜单'}
           >
-            <Menu className="h-5 w-5" />
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         )}
       </div>
 
-      {mounted && createPortal(SidebarContent, document.body)}
+      {isHydrated ? createPortal(SidebarContent, document.body) : null}
     </>
   )
 }

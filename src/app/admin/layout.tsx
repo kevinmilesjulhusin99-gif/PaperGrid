@@ -2,18 +2,7 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import {
-  LayoutDashboard,
-  FileText,
-  FolderKanban,
-  Tags,
-  MessageSquare,
-  Users,
-  Settings,
-  LogOut,
-  Menu,
-  GalleryVerticalEnd
-} from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,8 +41,6 @@ export default async function AdminLayout({
 }) {
   const session = await auth()
   const defaultAvatarUrl = (await getSetting<string>('site.defaultAvatarUrl', '')) || ''
-  const logoUrl = ((await getSetting<string>('site.logoUrl', '')) || '').trim()
-  const logoSrc = logoUrl || '/logo.svg'
   const adminInitialSetup = await isDefaultAdmin()
   const rawVersion = process.env.APP_VERSION || ''
   const appVersion = rawVersion ? (rawVersion.startsWith('v') ? rawVersion : `v${rawVersion}`) : ''
@@ -71,20 +58,11 @@ export default async function AdminLayout({
       {/* Top Navigation Bar */}
       <header className="sticky top-0 z-50 border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
         <div className="flex h-16 items-center justify-between px-4">
-          {/* Logo */}
+          {/* 左侧入口 */}
           <div className="flex items-center gap-4">
-            <AdminMobileSidebar items={navItems} logoSrc={logoSrc} />
-            <Link href="/admin" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-md bg-primary p-0.5">
-                <img
-                  src={logoSrc}
-                  alt="博客 logo"
-                  className="h-full w-full scale-110 object-cover"
-                  loading="eager"
-                  decoding="async"
-                />
-              </div>
-              <span className="hidden font-semibold sm:inline-block">
+            <AdminMobileSidebar items={navItems} />
+            <Link href="/admin" className="flex items-center">
+              <span className="text-sm font-semibold tracking-tight sm:text-base">
                 博客管理后台
               </span>
             </Link>
