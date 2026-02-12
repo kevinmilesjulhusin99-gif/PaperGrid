@@ -37,6 +37,9 @@ export function MobileNav({
 
   const pathname = usePathname()
   const isAdmin = pathname?.startsWith('/admin')
+  const logoUrl = typeof settings?.['site.logoUrl'] === 'string' ? settings['site.logoUrl'] : ''
+  const logoSrc = logoUrl.trim() || '/logo.svg'
+  const siteTitle = settings?.['site.title'] || '执笔为剑'
   const displayName = isAdmin
     ? session?.user?.name || '管理员'
     : settings?.['site.ownerName'] || '千叶'
@@ -139,12 +142,18 @@ export function MobileNav({
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div
-              className={`flex h-8 w-8 items-center justify-center rounded-lg ${isAdmin ? 'bg-amber-500' : 'bg-primary'}`}
+              className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-md p-0.5 ${isAdmin ? 'bg-amber-500' : 'bg-primary'}`}
             >
-              <span className="text-sm font-bold text-white">{isAdmin ? '管' : '博'}</span>
+              <img
+                src={logoSrc}
+                alt={`${siteTitle} logo`}
+                className="h-full w-full scale-110 object-cover"
+                loading="eager"
+                decoding="async"
+              />
             </div>
             <span className="text-lg font-bold tracking-tight">
-              {isAdmin ? '管理后台' : settings?.['site.title'] || '执笔为剑'}
+              {isAdmin ? '管理后台' : siteTitle}
             </span>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setOpen(false)} aria-label="关闭菜单">

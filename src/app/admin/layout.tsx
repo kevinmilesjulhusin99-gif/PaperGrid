@@ -52,6 +52,8 @@ export default async function AdminLayout({
 }) {
   const session = await auth()
   const defaultAvatarUrl = (await getSetting<string>('site.defaultAvatarUrl', '')) || ''
+  const logoUrl = ((await getSetting<string>('site.logoUrl', '')) || '').trim()
+  const logoSrc = logoUrl || '/logo.svg'
   const adminInitialSetup = await isDefaultAdmin()
   const rawVersion = process.env.APP_VERSION || ''
   const appVersion = rawVersion ? (rawVersion.startsWith('v') ? rawVersion : `v${rawVersion}`) : ''
@@ -71,10 +73,16 @@ export default async function AdminLayout({
         <div className="flex h-16 items-center justify-between px-4">
           {/* Logo */}
           <div className="flex items-center gap-4">
-            <AdminMobileSidebar items={navItems} />
+            <AdminMobileSidebar items={navItems} logoSrc={logoSrc} />
             <Link href="/admin" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="text-sm font-bold text-primary-foreground">博</span>
+              <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-md bg-primary p-0.5">
+                <img
+                  src={logoSrc}
+                  alt="博客 logo"
+                  className="h-full w-full scale-110 object-cover"
+                  loading="eager"
+                  decoding="async"
+                />
               </div>
               <span className="hidden font-semibold sm:inline-block">
                 博客管理后台

@@ -29,6 +29,7 @@ export function Navbar({ settings }: { settings?: Record<string, unknown> }) {
   const s: Record<string, unknown> = settings || {}
   const hideAdminEntry = Boolean(s['ui.hideAdminEntry'])
   const logoUrl = typeof s['site.logoUrl'] === 'string' ? s['site.logoUrl'] : ''
+  const logoSrc = logoUrl.trim() || '/logo.svg'
   const siteTitle = typeof s['site.title'] === 'string' ? s['site.title'] : '执笔为剑'
   const defaultAvatarUrl =
     typeof s['site.defaultAvatarUrl'] === 'string' ? s['site.defaultAvatarUrl'] : ''
@@ -95,18 +96,14 @@ export function Navbar({ settings }: { settings?: Record<string, unknown> }) {
           className={`transition-all duration-300 ${showProgressUI ? 'pointer-events-none -translate-x-4 scale-95 opacity-0' : 'translate-x-0 scale-100 opacity-100'}`}
         >
           <Link href="/" className="flex items-center gap-2">
-            <div className="bg-primary flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg">
-              {logoUrl ? (
-                <img
-                  src={logoUrl}
-                  alt="logo"
-                  className="h-full w-full object-cover"
-                  loading="eager"
-                  decoding="async"
-                />
-              ) : (
-                <span className="text-primary-foreground text-sm font-bold">博</span>
-              )}
+            <div className="bg-primary flex h-8 w-8 items-center justify-center overflow-hidden rounded-md p-0.5">
+              <img
+                src={logoSrc}
+                alt={`${siteTitle} logo`}
+                className="h-full w-full scale-110 object-cover"
+                loading="eager"
+                decoding="async"
+              />
             </div>
             <span className="hidden text-lg font-bold sm:inline-block">{siteTitle}</span>
           </Link>
