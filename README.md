@@ -30,7 +30,15 @@
 
 ## 快速开始
 
-一键运行：复制 docker-compose.yml，直接启动。
+### 方式一：Docker（推荐）
+
+1. 准备目录：
+
+```bash
+mkdir -p ~/papergrid && cd ~/papergrid
+```
+
+2. 创建 `docker-compose.yml`（内容如下，与当前镜像运行配置一致）：
 
 ```yaml
 services:
@@ -51,6 +59,16 @@ services:
       # INIT_ADMIN_TOKEN: "请替换为随机字符串"
       # 可选：自定义 /api/init 创建的管理员初始密码（不设置则为 admin123）
       # ADMIN_INIT_PASSWORD: "请替换为强密码"
+      # SMTP 邮件通知（可选）
+      # SMTP_HOST: "smtp.example.com"
+      # SMTP_PORT: "465"
+      # SMTP_SECURE: "true"
+      # SMTP_USER: "noreply@example.com"
+      # SMTP_PASS: "your-smtp-password-or-app-token"
+      # EMAIL_TO: "owner@example.com,ops@example.com"
+      # EMAIL_REPLY_DENYLIST: "deny1@example.com,deny2@example.com"
+      # EMAIL_UNSUBSCRIBE_SECRET: "change-this-secret"
+      # EMAIL_REPLY_UNSUBSCRIBE_EXPIRE_DAYS: "365"
       NEXT_CACHE_DIR: "/data/.next-cache"
       MEDIA_ROOT: "/data/uploads"
     volumes:
@@ -66,13 +84,27 @@ volumes:
   papergrid_data:
 ```
 
-运行：
+3. 首次启动：
 
 ```bash
-docker compose up -d
+docker compose pull && docker compose up -d
 ```
 
-### 1. 安装依赖
+4. 更新到最新镜像：
+
+```bash
+cd ~/papergrid && docker compose pull && docker compose up -d
+```
+
+默认管理员账号：
+- 邮箱：`admin@example.com`
+- 密码：`admin123`
+
+首次登录请立即修改密码。
+
+### 方式二：本地开发
+
+1. 安装依赖：
 
 ```bash
 pnpm install
@@ -80,17 +112,11 @@ pnpm install
 
 安装完成后会自动执行数据库准备，见下方「数据库自动初始化」。
 
-### 2. 启动开发服务器
+2. 启动开发服务器：
 
 ```bash
 pnpm dev
 ```
-
-### 3. 登录
-
-默认管理员账号：
-- 邮箱：`admin@example.com`
-- 密码：`admin123`
 
 如需示例文章数据，执行 `tsx prisma/seed-posts.ts`。
 
@@ -340,14 +366,20 @@ pnpm db:seed     # 仅执行种子数据
 
 ## Docker 一键运行
 
-本项目提供开箱即用的 Docker Compose 配置：
+本项目提供开箱即用的 Docker Compose 配置，首次启动与更新建议如下：
 
 ```bash
-docker compose up -d
+docker compose pull && docker compose up -d
 ```
 
 默认会自动初始化 SQLite 数据库到数据卷，并创建默认管理员账号：
 `admin@example.com / admin123`，首次登录请尽快修改。
+
+更新时建议执行：
+
+```bash
+docker compose pull && docker compose up -d
+```
 
 如果你希望在本地编译镜像：
 
