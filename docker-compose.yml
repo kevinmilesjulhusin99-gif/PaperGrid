@@ -16,6 +16,16 @@ services:
       # INIT_ADMIN_TOKEN: "请替换为随机字符串"
       # 可选：自定义 /api/init 创建的管理员初始密码（不设置则为 admin123）
       # ADMIN_INIT_PASSWORD: "请替换为强密码"
+      # SMTP 邮件通知（可选）
+      # SMTP_HOST: "smtp.example.com"
+      # SMTP_PORT: "465"
+      # SMTP_SECURE: "true"
+      # SMTP_USER: "noreply@example.com"
+      # SMTP_PASS: "your-smtp-password-or-app-token"
+      # EMAIL_TO: "owner@example.com,ops@example.com"
+      # EMAIL_REPLY_DENYLIST: "deny1@example.com,deny2@example.com"
+      # EMAIL_UNSUBSCRIBE_SECRET: "change-this-secret"
+      # EMAIL_REPLY_UNSUBSCRIBE_EXPIRE_DAYS: "365"
       NEXT_CACHE_DIR: "/data/.next-cache"
       MEDIA_ROOT: "/data/uploads"
     volumes:

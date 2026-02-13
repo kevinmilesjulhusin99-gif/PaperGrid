@@ -174,7 +174,7 @@ function CommentItem({
 
   return (
     <div className="space-y-3">
-      <Card className="p-4 hover:shadow-md transition-shadow">
+      <Card id={`comment-${comment.id}`} className="p-4 hover:shadow-md transition-shadow">
         <div className="flex items-start gap-3">
           {/* 头像 */}
           <Avatar className="h-10 w-10 shrink-0">

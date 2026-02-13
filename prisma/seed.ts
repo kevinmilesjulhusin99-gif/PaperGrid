@@ -62,7 +62,11 @@ async function main() {
     { key: 'comments.guestModerationRequired', value: { enabled: false }, group: 'comments', editable: true },
     { key: 'auth.allowRegistration', value: { allow: true }, group: 'auth', editable: true },
     { key: 'email.enabled', value: { enabled: false }, group: 'email', editable: true },
-    { key: 'email.from', value: { from: 'noreply@example.com' }, group: 'email', editable: true },
+    { key: 'email.from', value: { from: 'PaperGrid 通知' }, group: 'email', editable: true },
+    { key: 'email.reply.enabled', value: { enabled: true }, group: 'email', editable: true },
+    { key: 'email.reply.requireApproved', value: { enabled: true }, group: 'email', editable: true },
+    { key: 'email.reply.unsubscribeEnabled', value: { enabled: true }, group: 'email', editable: true },
+    { key: 'email.reply.unsubscribeList', value: { text: '' }, group: 'email', editable: false },
     // 页脚设置
     { key: 'site.footer_icp', value: { value: '蜀ICP备xxxx' }, group: 'site', editable: true },
     { key: 'site.footer_copyright', value: { value: '千叶' }, group: 'site', editable: true },

@@ -3,6 +3,37 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { isDefaultAdmin } from '@/lib/admin-default'
 
+const AUTO_CREATE_SETTINGS: Record<string, { value: any; group: string; editable: boolean; secret: boolean; description: string }> = {
+  'ui.mobileReadingBackground': {
+    value: { style: 'grid' },
+    group: 'ui',
+    editable: true,
+    secret: false,
+    description: '移动端阅读背景样式',
+  },
+  'email.reply.enabled': {
+    value: { enabled: true },
+    group: 'email',
+    editable: true,
+    secret: false,
+    description: '回复评论邮件通知开关',
+  },
+  'email.reply.requireApproved': {
+    value: { enabled: true },
+    group: 'email',
+    editable: true,
+    secret: false,
+    description: '仅在评论通过审核后发送回复通知',
+  },
+  'email.reply.unsubscribeEnabled': {
+    value: { enabled: true },
+    group: 'email',
+    editable: true,
+    secret: false,
+    description: '允许收件人通过链接退订回复通知',
+  },
+}
+
 // GET /api/admin/settings - 返回所有设置
 export async function GET() {
   try {
@@ -41,15 +72,17 @@ export async function GET() {
       })
     }
 
-    if (!payload.find((s) => s.key === 'ui.mobileReadingBackground')) {
-      payload.push({
-        key: 'ui.mobileReadingBackground',
-        value: { style: 'grid' },
-        group: 'ui',
-        editable: true,
-        secret: false,
-        description: '移动端阅读背景样式',
-      })
+    for (const [key, config] of Object.entries(AUTO_CREATE_SETTINGS)) {
+      if (!payload.find((s) => s.key === key)) {
+        payload.push({
+          key,
+          value: config.value,
+          group: config.group,
+          editable: config.editable,
+          secret: config.secret,
+          description: config.description,
+        })
+      }
     }
 
     return NextResponse.json({ settings: payload })
@@ -79,14 +112,16 @@ export async function PATCH(request: NextRequest) {
     for (const u of updates) {
       const s = await prisma.setting.findUnique({ where: { key: u.key } })
       if (!s) {
-        if (u.key === 'ui.mobileReadingBackground') {
+        const createConfig = AUTO_CREATE_SETTINGS[u.key]
+        if (createConfig) {
           await prisma.setting.create({
             data: {
               key: u.key,
               value: u.value,
-              group: 'ui',
-              editable: true,
-              secret: false,
+              group: createConfig.group,
+              editable: createConfig.editable,
+              secret: createConfig.secret,
+              description: createConfig.description,
             },
           })
           results.push({ key: u.key, updated: true })

@@ -6,6 +6,12 @@ import sanitizeHtml from 'sanitize-html'
 import { getClientIp, rateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { getPostUnlockTokenFromHeaders, verifyPostUnlockToken } from '@/lib/post-protection'
 import { sendCommentGotifyNotification, type CommentGotifyNotificationInput } from '@/lib/notifications/gotify-service'
+import {
+  sendCommentEmailNotification,
+  sendCommentReplyEmailNotification,
+  type CommentEmailNotificationInput,
+  type CommentReplyEmailNotificationInput,
+} from '@/lib/notifications/email-service'
 
 function sendCommentGotifyNotificationAsync(comment: CommentGotifyNotificationInput) {
   after(async () => {
@@ -13,6 +19,26 @@ function sendCommentGotifyNotificationAsync(comment: CommentGotifyNotificationIn
       await sendCommentGotifyNotification(comment)
     } catch (notifyError) {
       console.error('Gotify 通知发送失败:', notifyError)
+    }
+  })
+}
+
+function sendCommentEmailNotificationAsync(comment: CommentEmailNotificationInput) {
+  after(async () => {
+    try {
+      await sendCommentEmailNotification(comment)
+    } catch (notifyError) {
+      console.error('邮件通知发送失败:', notifyError)
+    }
+  })
+}
+
+function sendCommentReplyEmailNotificationAsync(input: CommentReplyEmailNotificationInput) {
+  after(async () => {
+    try {
+      await sendCommentReplyEmailNotification(input)
+    } catch (notifyError) {
+      console.error('邮件回复通知发送失败:', notifyError)
     }
   })
 }
@@ -101,6 +127,16 @@ export async function POST(request: NextRequest) {
     }
 
     const session = await auth()
+    const sessionUser = session?.user
+      ? await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { id: true, email: true, name: true },
+      })
+      : null
+    if (session?.user && !sessionUser) {
+      return NextResponse.json({ error: '登录状态已失效，请重新登录' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const slug = searchParams.get('slug')
 
@@ -153,7 +189,7 @@ export async function POST(request: NextRequest) {
     const { content, authorName, authorEmail, parentId } = body
 
     // 检查用户是否登录
-    if (!session?.user && !allowGuest) {
+    if (!sessionUser && !allowGuest) {
       return NextResponse.json({ error: '请先登录' }, { status: 401 })
     }
 
@@ -177,7 +213,7 @@ export async function POST(request: NextRequest) {
 
     let guestName: string | null = null
     let guestEmail: string | null = null
-    if (!session?.user) {
+    if (!sessionUser) {
       guestName = typeof authorName === 'string' ? authorName.trim() : ''
       guestEmail = typeof authorEmail === 'string' ? authorEmail.trim() : ''
       if (!guestName || !guestEmail) {
@@ -193,6 +229,16 @@ export async function POST(request: NextRequest) {
     }
 
     let parentCommentId: string | null = null
+    let parentCommentForNotification: {
+      id: string
+      content: string
+      authorName: string | null
+      authorEmail: string | null
+      author: {
+        name: string | null
+        email: string | null
+      } | null
+    } | null = null
     if (parentId) {
       if (typeof parentId !== 'string') {
         return NextResponse.json({ error: '回复目标不合法' }, { status: 400 })
@@ -203,17 +249,29 @@ export async function POST(request: NextRequest) {
           postId: post.id,
           status: 'APPROVED',
         },
-        select: { id: true },
+        select: {
+          id: true,
+          content: true,
+          authorName: true,
+          authorEmail: true,
+          author: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
       })
       if (!parentComment) {
         return NextResponse.json({ error: '回复目标不存在或未通过审核' }, { status: 400 })
       }
       parentCommentId = parentComment.id
+      parentCommentForNotification = parentComment
     }
 
     // 创建评论
     const shouldModerateGuest = moderationRequired ? true : guestModerationRequired
-    const status = session?.user
+    const status = sessionUser
       ? (moderationRequired ? 'PENDING' : 'APPROVED')
       : (shouldModerateGuest ? 'PENDING' : 'APPROVED')
 
@@ -221,7 +279,7 @@ export async function POST(request: NextRequest) {
       data: {
         content: sanitizedContent,
         postId: post.id,
-        authorId: session?.user ? session.user.id : null,
+        authorId: sessionUser ? sessionUser.id : null,
         authorName: guestName,
         authorEmail: guestEmail,
         parentId: parentCommentId,
@@ -233,20 +291,30 @@ export async function POST(request: NextRequest) {
         status: true,
         createdAt: true,
         authorName: true,
+        authorEmail: true,
         author: {
           select: {
             name: true,
+            email: true,
             image: true,
           },
         },
         post: {
           select: {
             title: true,
+            slug: true,
           },
         },
       },
     })
     sendCommentGotifyNotificationAsync(comment)
+    sendCommentEmailNotificationAsync(comment)
+    if (parentCommentForNotification) {
+      sendCommentReplyEmailNotificationAsync({
+        ...comment,
+        parent: parentCommentForNotification,
+      })
+    }
 
     const responseComment = {
       id: comment.id,

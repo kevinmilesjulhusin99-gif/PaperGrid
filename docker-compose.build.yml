@@ -10,6 +10,15 @@ services:
     environment:
       DATABASE_URL: "file:/data/db.sqlite"
       NEXTAUTH_URL: "http://localhost:3000"
+      # SMTP_HOST: "smtp.example.com"
+      # SMTP_PORT: "465"
+      # SMTP_SECURE: "true"
+      # SMTP_USER: "noreply@example.com"
+      # SMTP_PASS: "your-smtp-password-or-app-token"
+      # EMAIL_TO: "owner@example.com,ops@example.com"
+      # EMAIL_REPLY_DENYLIST: "deny1@example.com,deny2@example.com"
+      # EMAIL_UNSUBSCRIBE_SECRET: "change-this-secret"
+      # EMAIL_REPLY_UNSUBSCRIBE_EXPIRE_DAYS: "365"
     volumes:
       - papergrid_data:/data
     restart: unless-stopped

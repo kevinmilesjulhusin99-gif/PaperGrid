@@ -121,7 +121,19 @@ CLOUDINARY_CLOUD_NAME=""
 CLOUDINARY_API_KEY=""
 CLOUDINARY_API_SECRET=""
 
-RESEND_API_KEY=""
+SMTP_HOST=""
+SMTP_PORT="465"
+SMTP_SECURE="true"
+SMTP_USER=""
+SMTP_PASS=""
+# 可选：多个收件人用逗号分隔；留空则自动发给所有管理员邮箱
+EMAIL_TO=""
+# 可选：回复通知邮件拒收名单（逗号/换行分隔）
+EMAIL_REPLY_DENYLIST=""
+# 可选：退订链接签名密钥（不填则回退到 NEXTAUTH_SECRET）
+EMAIL_UNSUBSCRIBE_SECRET=""
+# 可选：退订链接有效期（天）
+EMAIL_REPLY_UNSUBSCRIBE_EXPIRE_DAYS="365"
 
 GOTIFY_URL=""
 GOTIFY_TOKEN=""
@@ -129,6 +141,23 @@ GOTIFY_TOKEN=""
 NEXT_PUBLIC_APP_URL="http://localhost:6066"
 NEXT_PUBLIC_DEFAULT_LOCALE="zh"
 ```
+
+OAuth 回调填写（GitHub/Google）：
+- `Homepage URL` 填你的站点地址（例如 `https://blog.miyako.space`）
+- GitHub `Authorization callback URL` 固定为：`{站点地址}/api/auth/callback/github`
+- Google `Authorized redirect URI` 固定为：`{站点地址}/api/auth/callback/google`
+- 本地开发示例：
+  - GitHub 回调：`http://localhost:6066/api/auth/callback/github`
+  - Google 回调：`http://localhost:6066/api/auth/callback/google`
+- `NEXTAUTH_URL` 必须与 OAuth 平台里配置的站点地址一致（协议、域名、端口都要一致）
+
+SMTP 邮件通知说明：
+- 需在后台开启 `邮件通知开启`
+- 实际发件地址固定使用 `SMTP_USER`
+- `email.from` 仅作为邮件显示名
+- 收件人优先读取 `EMAIL_TO`，未配置时自动发送到管理员账号邮箱
+- 可开启“回复评论邮件通知”，系统会给被回复人发提醒
+- 回复通知支持退订链接（`/api/comments/unsubscribe`）
 
 
 ## 图片上传与文件管理
